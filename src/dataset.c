@@ -16,11 +16,12 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <zlib.h>
 
 #include <tinyest/dataset.h>
 
-int read_tadm_context(FILE *f, dataset_context_t *ctx);
-int read_tadm_event(FILE *f, dataset_event_t *evt);
+int read_tadm_context(gzFile f, dataset_context_t *ctx);
+int read_tadm_event(gzFile f, dataset_event_t *evt);
 
 size_t dataset_count_features(dataset_t *dataset)
 {
@@ -122,8 +123,12 @@ void dataset_event_free(dataset_event_t *event)
   }
 }
 
-int read_tadm_dataset(FILE *f, dataset_t *dataset)
+int read_tadm_dataset(int fd, dataset_t *dataset)
 {
+  gzFile f;
+  if ((f = gzdopen(fd, "rb")) == NULL)
+    return TADM_ERROR_OPEN;
+
   memset(dataset, 0, sizeof(dataset_t));
 
   dataset->contexts = NULL;
@@ -135,6 +140,7 @@ int read_tadm_dataset(FILE *f, dataset_t *dataset)
       break;
     else if (r != 0) {
       dataset_free(dataset);
+      gzclose(f);
       return r;
     }
 
@@ -147,16 +153,18 @@ int read_tadm_dataset(FILE *f, dataset_t *dataset)
 
   dataset->n_features = dataset_count_features(dataset);
 
+  gzclose(f);
+
   return TADM_OK;
 }
 
-int read_tadm_context(FILE *f, dataset_context_t *ctx)
+int read_tadm_context(gzFile f, dataset_context_t *ctx)
 {
 
   memset(ctx, 0, sizeof(dataset_context_t));
   /* Read context size. */
   char line[65535];
-  if (fgets(line, 65535, f) == NULL) {
+  if (gzgets(f, line, 65535) == NULL) {
     return TADM_EOF;
   }
 
@@ -180,12 +188,12 @@ int read_tadm_context(FILE *f, dataset_context_t *ctx)
   return TADM_OK;
 }
 
-int read_tadm_event(FILE *f, dataset_event_t *evt)
+int read_tadm_event(gzFile f, dataset_event_t *evt)
 {
   memset(evt, 0, sizeof(dataset_event_t));
 
   char line[65535];
-  if (fgets(line, 65535, f) == NULL) {
+  if (gzgets(f, line, 65535) == NULL) {
     return TADM_ERROR_PREMATURE_EOF;
   }
 

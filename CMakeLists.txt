@@ -11,6 +11,11 @@ include_directories(${tinyest_SOURCE_DIR})
 
 set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -pedantic")
 
+find_package(ZLIB REQUIRED)
+if(ZLIB_FOUND)
+  include_directories(${ZLIB_INCLUDE_DIRS})
+endif()
+
 # SSE/SSE2
 set(CMAKE_TINYEST_HAS_SSE 0)
 set(ENABLE_SSE2 OFF CACHE BOOL "Compilation with SSE2/MMX extensions")
@@ -44,6 +49,8 @@ set (LIBTINYEST_SOURCES
 add_library(tinyest SHARED
   ${LIBTINYEST_SOURCES}
 )
+
+target_link_libraries(tinyest ${ZLIB_LIBRARIES})
 
 add_executable(estimate
   util/estimate.c

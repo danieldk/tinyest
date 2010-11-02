@@ -19,6 +19,7 @@
 
 #include <stddef.h>
 #include <stdio.h>
+#include <zlib.h>
 
 typedef struct {
   size_t feature;
@@ -46,6 +47,7 @@ typedef struct {
 enum tadm_read_status {
   TADM_OK,
   TADM_EOF,
+  TADM_ERROR_OPEN,
   TADM_ERROR_PREMATURE_EOF,
   TADM_ERROR_MALFORMED_EVENT,
   TADM_ERROR_NUMBER_FEATURES
@@ -56,6 +58,6 @@ void dataset_normalize(dataset_t *dataset);
 void dataset_free(dataset_t *dataset);
 void dataset_context_free(dataset_context_t *context);
 void dataset_event_free(dataset_event_t *event);
-int read_tadm_dataset(FILE *f, dataset_t *dataset);
+int read_tadm_dataset(int fd, dataset_t *dataset);
 
 #endif // DATASET_H

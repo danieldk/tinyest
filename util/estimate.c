@@ -15,6 +15,7 @@
  */
 
 #include <errno.h>
+#include <fcntl.h>
 #include <getopt.h>
 #include <math.h>
 #include <stdio.h>
@@ -126,25 +127,23 @@ int main(int argc, char *argv[]) {
 
   fprintf(stderr, "L2 prior sigma^2: %.4e\n\n", l2_sigma_sq);
 
-  FILE *f = stdin;
-  if (argc == 1)
-    f = fopen(argv[0], "r");
-  if (f == NULL) {
-    fprintf(stderr, "Could not open: %s\n", argv[0]);
+  dataset_t ds;
+  
+  int fd = 0;
+  if (argc == 1 && (fd = open(argv[0], O_RDONLY)) == -1) {
+    fprintf(stderr, "Could not open %s\n", argv[0]);
     return 1;
   }
 
-  dataset_t ds;
-  int r = read_tadm_dataset(f, &ds);
-  fclose(f);
-  
-  fprintf(stderr, "Features: %zu\n", ds.n_features);
-  fprintf(stderr,"Contexts: %zu\n\n", ds.n_contexts);
+  int r = read_tadm_dataset(fd, &ds);
 
   if (r != TADM_OK) {
     fprintf(stderr, "Error reading data...\n");
     return 1;
   }
+  
+  fprintf(stderr, "Features: %zu\n", ds.n_features);
+  fprintf(stderr, "Contexts: %zu\n\n", ds.n_contexts);
 
   dataset_normalize(&ds);
 
