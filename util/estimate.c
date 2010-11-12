@@ -31,10 +31,11 @@
 static struct option longopts[] = {
   { "ftol", required_argument, NULL, 1},
   { "gtol", required_argument, NULL, 2},
-  { "l2", required_argument, NULL, 3},
-  { "linesearch", required_argument, NULL, 4},
-  { "minstep", required_argument, NULL, 5},
-  { "maxstep", required_argument, NULL, 6},
+  { "l1", required_argument, NULL, 3},
+  { "l2", required_argument, NULL, 4},
+  { "linesearch", required_argument, NULL, 5},
+  { "minstep", required_argument, NULL, 6},
+  { "maxstep", required_argument, NULL, 7},
   { NULL, 0, NULL, 0 }
 };
 
@@ -43,6 +44,7 @@ void usage(char *program_name)
   fprintf(stderr, "Usage: %s [OPTION] dataset\n\n", program_name);
   fprintf(stderr, "--ftol val\t\tLine search algorithm ftol (default: 1e-4)\n");
   fprintf(stderr, "--gtol val\t\tLine search algorithm gtol (default: 0.9)\n");
+  fprintf(stderr, "--l1 val\t\tl1 norm coefficient\n");
   fprintf(stderr, "--l2 val\t\tGaussian (l2) prior\n");
   fprintf(stderr, "--linesearch alg\tLine search algorithm: armijo, ");
   fprintf(stderr, "backtracking, wolfe, or\n\t\t\tstrong_wolfe\n");
@@ -87,9 +89,12 @@ int main(int argc, char *argv[]) {
       params.gtol = str_to_double(optarg);
       break;
     case 3:
-      l2_sigma_sq = str_to_double(optarg);
+      params.orthantwise_c = str_to_double(optarg);
       break;
     case 4:
+      l2_sigma_sq = str_to_double(optarg);
+      break;
+    case 5:
       if (strcmp(optarg, "armijo") == 0)
         params.linesearch = LBFGS_LINESEARCH_BACKTRACKING_ARMIJO;
       else if (strcmp(optarg, "backtracking") == 0)
@@ -103,11 +108,11 @@ int main(int argc, char *argv[]) {
         return 1;
       }
       break;
-    case 5:
+    case 6:
       fprintf(stderr,"backtracking\n");
       params.min_step = str_to_double(optarg);
       break;
-    case 6:
+    case 7:
       params.max_step = str_to_double(optarg);
       break;
     case '?':
@@ -125,6 +130,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  fprintf(stderr, "L1 norm coefficient: %.2f\n", params.orthantwise_c); 
   fprintf(stderr, "L2 prior sigma^2: %.4e\n\n", l2_sigma_sq);
 
   dataset_t ds;
@@ -146,6 +152,12 @@ int main(int argc, char *argv[]) {
   fprintf(stderr, "Contexts: %zu\n\n", ds.n_contexts);
 
   dataset_normalize(&ds);
+
+  if (params.orthantwise_c != 0.0) {
+    params.orthantwise_end = ds.n_features;
+    // l1 prior only works with backtracking linesearch.
+    params.linesearch = LBFGS_LINESEARCH_BACKTRACKING;
+  }
 
   model_t model;
   model_new(&model, ds.n_features);
