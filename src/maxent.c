@@ -24,13 +24,14 @@
 #include <tinyest/model.h>
 
 void maxent_context_sums(dataset_context_t *ctx, lbfgsfloatval_t const *params,
-    double *sums, double *z)
+    double *sums, double *z, feature_set *f_restrict)
 {
   dataset_event_t *evts = ctx->events;
   for (int j = 0; j < ctx->n_events; ++j) {
     feature_value_t *fvals = evts[j].fvals;
     for (int k = 0; k < evts[j].n_fvals; ++k)
-      sums[j] += params[fvals[k].feature] * fvals[k].value;
+      if (f_restrict == 0 || feature_set_contains(f_restrict, fvals[k].feature))
+        sums[j] += params[fvals[k].feature] * fvals[k].value;
 
     sums[j] = exp(sums[j]);
     *z += sums[j];
@@ -44,12 +45,13 @@ lbfgsfloatval_t maxent_lbfgs_evaluate(void *instance, lbfgsfloatval_t const *x,
   dataset_t *ds = d->dataset;
 
   for (int i = 0; i < d->dataset->n_features; ++i)
+    if (d->model->f_restrict == 0 ||
+      feature_set_contains(d->model->f_restrict, i))
     g[i] = -d->feature_values[i];
 
   lbfgsfloatval_t ll = 0.0;
 
   dataset_context_t *ctxs = ds->contexts;
-  #pragma omp parallel for
   for (int i = 0; i < ds->n_contexts; ++i) 
   {
     lbfgsfloatval_t ctxLl = 0.0;
@@ -63,7 +65,7 @@ lbfgsfloatval_t maxent_lbfgs_evaluate(void *instance, lbfgsfloatval_t const *x,
     memset(sums, 0, ctxs[i].n_events * sizeof(double));
     double z = 0.0;
 
-    maxent_context_sums(&ctxs[i], x, sums, &z);
+    maxent_context_sums(&ctxs[i], x, sums, &z, d->model->f_restrict);
 
     dataset_event_t *evts = ctxs[i].events;
     for (int j = 0; j < ctxs[i].n_events; ++j) {
@@ -76,8 +78,10 @@ lbfgsfloatval_t maxent_lbfgs_evaluate(void *instance, lbfgsfloatval_t const *x,
       // Contribution of this context to p(f).
       feature_value_t *fvals = evts[j].fvals;
       for (int k = 0; k < evts[j].n_fvals; ++k)
-        #pragma omp atomic
-        g[fvals[k].feature] += ctxs[i].p * p_yx * fvals[k].value;
+        if (d->model->f_restrict == 0 ||
+            feature_set_contains(d->model->f_restrict, fvals[k].feature)) {
+          g[fvals[k].feature] += ctxs[i].p * p_yx * fvals[k].value;
+        }
     }
 
     #pragma omp atomic
@@ -91,6 +95,9 @@ lbfgsfloatval_t maxent_lbfgs_evaluate(void *instance, lbfgsfloatval_t const *x,
     double f_sq_sum = 0.0;
 
     for (int i = 0; i < d->dataset->n_features; ++i) {
+      if (d->model->f_restrict &&
+          !feature_set_contains(d->model->f_restrict, i))
+        continue;
       f_sq_sum += pow(x[i], 2.0);
 
       // Impose Gaussian prior on gradient: g_i + x_i / sigma_sq
@@ -108,7 +115,7 @@ int maxent_lbfgs_optimize(dataset_t *dataset, model_t *model,
      lbfgs_parameter_t *params, double l2_sigma_sq)
 {
   double *fvals = dataset_feature_values(dataset);
-  maxent_lbfgs_data_t lbfgs_data = {l2_sigma_sq, dataset, fvals};
+  maxent_lbfgs_data_t lbfgs_data = {l2_sigma_sq, dataset, fvals, model};
 
   int r = lbfgs(dataset->n_features, model->params, 0, maxent_lbfgs_evaluate,
       maxent_lbfgs_progress_verbose, &lbfgs_data, params);
@@ -116,6 +123,98 @@ int maxent_lbfgs_optimize(dataset_t *dataset, model_t *model,
   free(fvals);
 
   return r;
+}
+
+int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
+    lbfgs_parameter_t *params, double l2_sigma_sq)
+{
+  model->f_restrict = feature_set_alloc();
+
+  lbfgs_parameter_t selectionParams;
+  memcpy(&selectionParams, params, sizeof(lbfgs_parameter_t));
+  selectionParams.max_iterations = 1;
+
+  model_t selection_model = { model->n_params, 0, 0};
+  selection_model.params = lbfgs_malloc(model->n_params);
+
+  double l2_sigma = 0.0;
+  if (l2_sigma_sq != 0.0)
+   l2_sigma = 1.0 / l2_sigma_sq;
+
+
+  lbfgsfloatval_t *g = lbfgs_malloc(dataset->n_features);
+
+
+  double *fvals = dataset_feature_values(dataset);
+  maxent_lbfgs_data_t lbfgs_data = {l2_sigma_sq, dataset, fvals, model};
+  maxent_lbfgs_data_t lbfgs_selection_data = {l2_sigma_sq, dataset, fvals,
+    &selection_model};
+
+
+  while (1) {
+    fprintf(stderr, "--- Feature selection ---\n");
+    memcpy(selection_model.params, model->params, model->n_params);
+    int r = lbfgs(dataset->n_features, selection_model.params, 0,
+        maxent_lbfgs_evaluate, maxent_lbfgs_progress_verbose,
+        &lbfgs_selection_data, &selectionParams);
+
+    for (int i = 0; i < dataset->n_features; ++i)
+      g[i] = -fvals[i];
+
+    dataset_context_t *ctxs = dataset->contexts;
+    for (int i = 0; i < dataset->n_contexts; ++i) 
+    {
+      if (ctxs[i].p == 0.0)
+        continue;
+
+      double *sums = malloc(ctxs[i].n_events * sizeof(double));
+      memset(sums, 0, ctxs[i].n_events * sizeof(double));
+      double z = 0.0;
+
+      maxent_context_sums(&ctxs[i], selection_model.params, sums, &z, 0);
+
+      dataset_event_t *evts = ctxs[i].events;
+      for (int j = 0; j < ctxs[i].n_events; ++j) {
+        // p(y|x)
+        double p_yx = sums[j] / z;
+
+        // Contribution of this context to p(f).
+        feature_value_t *fvals = evts[j].fvals;
+        for (int k = 0; k < evts[j].n_fvals; ++k)
+          g[fvals[k].feature] += ctxs[i].p * p_yx * fvals[k].value;
+      }
+      free(sums);
+    }
+
+    for (int i = 0; i < dataset->n_features; ++i)
+      g[i] += selection_model.params[i] * l2_sigma; 
+
+    double maxG = 0.0;
+    int maxF = -1;
+
+    for (int i = 0; i < dataset->n_features; ++i)
+      if (!feature_set_contains(model->f_restrict, i) &&
+          fabs(g[i]) > fabs(maxG)) {
+        maxG = g[i];
+        maxF = i;
+      }
+
+    if (selection_model.params[maxF] == 0.)
+      break;
+
+    fprintf(stderr, "--> Selected feature: %d (%f)\n", maxF, maxG);
+    //for (int i = 0; i < dataset->n_features; ++i)
+    //  fprintf(stdout, "g[%d]: %f\n", g[i]);
+    feature_set_insert(model->f_restrict, maxF);
+
+    fprintf(stderr, "--- Optimizing model ---\n");
+    r = lbfgs(dataset->n_features, model->params, 0, maxent_lbfgs_evaluate,
+      maxent_lbfgs_progress_verbose, &lbfgs_data, params);
+  }
+
+  lbfgs_free(g);
+
+  return 0;
 }
 
 int maxent_lbfgs_progress_verbose(void *instance, lbfgsfloatval_t const *x,

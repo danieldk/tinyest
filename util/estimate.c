@@ -31,11 +31,12 @@
 static struct option longopts[] = {
   { "ftol", required_argument, NULL, 1},
   { "gtol", required_argument, NULL, 2},
-  { "l1", required_argument, NULL, 3},
-  { "l2", required_argument, NULL, 4},
-  { "linesearch", required_argument, NULL, 5},
-  { "minstep", required_argument, NULL, 6},
-  { "maxstep", required_argument, NULL, 7},
+  { "grafting", no_argument, NULL, 3},
+  { "l1", required_argument, NULL, 4},
+  { "l2", required_argument, NULL, 5},
+  { "linesearch", required_argument, NULL, 6},
+  { "minstep", required_argument, NULL, 7},
+  { "maxstep", required_argument, NULL, 8},
   { NULL, 0, NULL, 0 }
 };
 
@@ -44,6 +45,7 @@ void usage(char *program_name)
   fprintf(stderr, "Usage: %s [OPTION] dataset\n\n", program_name);
   fprintf(stderr, "--ftol val\t\tLine search algorithm ftol (default: 1e-4)\n");
   fprintf(stderr, "--gtol val\t\tLine search algorithm gtol (default: 0.9)\n");
+  fprintf(stderr, "--grafting\t\t");
   fprintf(stderr, "--l1 val\t\tl1 norm coefficient\n");
   fprintf(stderr, "--l2 val\t\tGaussian (l2) prior\n");
   fprintf(stderr, "--linesearch alg\tLine search algorithm: armijo, ");
@@ -73,6 +75,7 @@ double str_to_double(char *str)
 int main(int argc, char *argv[]) {
   char *program_name = argv[0];
   double l2_sigma_sq = 0.0;
+  int grafting = 0;
 
   lbfgs_parameter_t params;
   lbfgs_parameter_init(&params);
@@ -89,12 +92,15 @@ int main(int argc, char *argv[]) {
       params.gtol = str_to_double(optarg);
       break;
     case 3:
-      params.orthantwise_c = str_to_double(optarg);
+      grafting = 1;
       break;
     case 4:
-      l2_sigma_sq = str_to_double(optarg);
+      params.orthantwise_c = str_to_double(optarg);
       break;
     case 5:
+      l2_sigma_sq = str_to_double(optarg);
+      break;
+    case 6:
       if (strcmp(optarg, "armijo") == 0)
         params.linesearch = LBFGS_LINESEARCH_BACKTRACKING_ARMIJO;
       else if (strcmp(optarg, "backtracking") == 0)
@@ -108,11 +114,11 @@ int main(int argc, char *argv[]) {
         return 1;
       }
       break;
-    case 6:
+    case 7:
       fprintf(stderr,"backtracking\n");
       params.min_step = str_to_double(optarg);
       break;
-    case 7:
+    case 8:
       params.max_step = str_to_double(optarg);
       break;
     case '?':
@@ -163,7 +169,11 @@ int main(int argc, char *argv[]) {
   model_new(&model, ds.n_features);
 
   fprintf(stderr, "Iter\tLL\t\txnorm\t\tgnorm\n\n");
-  r = maxent_lbfgs_optimize(&ds, &model, &params, l2_sigma_sq);
+
+  if (grafting) {
+    r = maxent_lbfgs_grafting(&ds, &model, &params, l2_sigma_sq);
+  } else
+    r = maxent_lbfgs_optimize(&ds, &model, &params, l2_sigma_sq);
 
   dataset_free(&ds);
 

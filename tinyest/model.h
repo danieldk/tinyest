@@ -19,11 +19,19 @@
 
 #include <stddef.h>
 
-#include <tinyest/lbfgs.h>
+#include "lbfgs.h"
+#include "rbtree/red_black_tree.h"
+
+typedef rb_red_blk_tree feature_set;
+feature_set *feature_set_alloc();
+void feature_set_free(feature_set *set);
+int feature_set_contains(feature_set *set, int f);
+void feature_set_insert(feature_set *set, int f);
 
 typedef struct {
   size_t n_params;
   lbfgsfloatval_t *params;
+  rb_red_blk_tree *f_restrict;
 } model_t;
 
 typedef struct {
@@ -33,5 +41,6 @@ typedef struct {
 
 void model_new(model_t *model, size_t n_params);
 void model_free(model_t *model);
+
 
 #endif // ESTIMATE_MODEL_H

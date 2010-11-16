@@ -44,6 +44,9 @@ set (LIBTINYEST_SOURCES
   src/lbfgs.c
   src/maxent.c
   src/model.c
+  src/rbtree/misc.c
+  src/rbtree/stack.c
+  src/rbtree/red_black_tree.c
 )
 
 add_library(tinyest SHARED
