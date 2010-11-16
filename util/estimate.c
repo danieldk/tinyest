@@ -31,7 +31,7 @@
 static struct option longopts[] = {
   { "ftol", required_argument, NULL, 1},
   { "gtol", required_argument, NULL, 2},
-  { "grafting", no_argument, NULL, 3},
+  { "grafting", required_argument, NULL, 3},
   { "l1", required_argument, NULL, 4},
   { "l2", required_argument, NULL, 5},
   { "linesearch", required_argument, NULL, 6},
@@ -45,7 +45,7 @@ void usage(char *program_name)
   fprintf(stderr, "Usage: %s [OPTION] dataset\n\n", program_name);
   fprintf(stderr, "--ftol val\t\tLine search algorithm ftol (default: 1e-4)\n");
   fprintf(stderr, "--gtol val\t\tLine search algorithm gtol (default: 0.9)\n");
-  fprintf(stderr, "--grafting\t\t");
+  fprintf(stderr, "--grafting n\t\tEnable grafting (feature selection)\n");
   fprintf(stderr, "--l1 val\t\tl1 norm coefficient\n");
   fprintf(stderr, "--l2 val\t\tGaussian (l2) prior\n");
   fprintf(stderr, "--linesearch alg\tLine search algorithm: armijo, ");
@@ -57,8 +57,8 @@ void usage(char *program_name)
 double str_to_double(char *str)
 {
   char *ep;
-  double r = strtod(optarg, &ep);
-  if (r == 0.0 && ep == optarg) {
+  double r = strtod(str, &ep);
+  if (r == 0.0 && ep == str) {
     fprintf(stderr, "Invalid double value: %s\n", optarg);
     exit(1);
   } else if (r == HUGE_VAL || r == -HUGE_VAL) {
@@ -66,6 +66,26 @@ double str_to_double(char *str)
     exit(1);
   } else if (r == 0.0 && errno == ERANGE) {
     fprintf(stderr, "Value underflows double: %s\n", optarg);
+    exit(1);
+  }
+
+  return r;
+}
+
+
+int str_to_int(char *str)
+{
+  char *ep;
+  int r = strtol(str, &ep, 10);
+  if (r == 0 && ep == str) {
+    fprintf(stderr, "Invalid int value: %s\n", optarg);
+    exit(1);
+  }
+  else if (r == 0 && errno == EINVAL) {
+    fprintf(stderr, "Value is invalid: %s\n", optarg);
+    exit(1);
+  } else if (r == 0 && errno == ERANGE) {
+    fprintf(stderr, "Value overflows/underflows int: %s\n", optarg);
     exit(1);
   }
 
@@ -92,7 +112,7 @@ int main(int argc, char *argv[]) {
       params.gtol = str_to_double(optarg);
       break;
     case 3:
-      grafting = 1;
+      grafting = str_to_int(optarg);
       break;
     case 4:
       params.orthantwise_c = str_to_double(optarg);
@@ -136,6 +156,11 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  if (grafting && params.orthantwise_c == 0.) {
+    fprintf(stderr, "Grafting requires a l1 norm coefficient...");
+    return 1;
+  }
+
   fprintf(stderr, "L1 norm coefficient: %.2f\n", params.orthantwise_c); 
   fprintf(stderr, "L2 prior sigma^2: %.4e\n\n", l2_sigma_sq);
 
@@ -171,7 +196,7 @@ int main(int argc, char *argv[]) {
   fprintf(stderr, "Iter\tLL\t\txnorm\t\tgnorm\n\n");
 
   if (grafting) {
-    r = maxent_lbfgs_grafting(&ds, &model, &params, l2_sigma_sq);
+    r = maxent_lbfgs_grafting(&ds, &model, &params, l2_sigma_sq, grafting);
   } else
     r = maxent_lbfgs_optimize(&ds, &model, &params, l2_sigma_sq);
 

@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <math.h>
+
 #include <tinyest/lbfgs.h>
 #include <tinyest/model.h>
 #include <tinyest/rbtree/red_black_tree.h>
@@ -55,6 +57,22 @@ void feature_set_free(feature_set *set) {
   RBTreeDestroy(set);
 }
 
+int feature_scores_comp(void const *a, void const *b) {
+  feature_score_t *fs_a = (feature_score_t *) a;
+  feature_score_t *fs_b = (feature_score_t *) b;
+
+  if (fabs(fs_a->score) > fabs(fs_b->score))
+    return -1;
+  else if (fabs(fs_a->score) < fabs(fs_b->score))
+    return 1;
+  else if (fs_a->feature > fs_b->feature)
+    return 1;
+  else if (fs_a->feature < fs_b->feature)
+    return -1;
+  else
+    return 0;
+}
+
 int feature_set_contains(feature_set *set, int f) {
   if ((RBExactQuery(set, &f)) == 0)
     return 0;
@@ -67,3 +85,45 @@ void feature_set_insert(feature_set *set, int f) {
   *new = f;
   RBTreeInsert(set, new, 0);
 }
+
+/* Feature scores. */
+
+void feature_scores_dealloc(void *a) {
+  free((feature_scores *) a);
+}
+void feature_scores_print(void const *a) {}
+
+feature_scores *feature_scores_alloc() {
+    return RBTreeCreate(feature_scores_comp, feature_scores_dealloc,
+        info_dealloc, feature_scores_print, info_print);
+}
+
+void feature_scores_free(feature_scores *scores)
+{
+  RBTreeDestroy(scores);
+}
+
+void feature_scores_insert(feature_scores *scores, int f, double score) {
+  feature_score_t *fs = (feature_score_t *) malloc(sizeof(feature_score_t));
+  fs->feature = f;
+  fs->score = score;
+  RBTreeInsert(scores, fs, 0);
+}
+
+feature_scores_node *feature_scores_begin(feature_scores *tree)
+{
+  rb_red_blk_node* nil = tree->nil;
+  rb_red_blk_node *x = tree->root;
+
+  while (x->left != nil)
+    x = x->left;
+
+  return x;
+}
+
+feature_scores_node *feature_scores_next(feature_scores *tree,
+    feature_scores_node *node)
+{
+  return TreeSuccessor(tree, node);
+}
+

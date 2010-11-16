@@ -126,7 +126,7 @@ int maxent_lbfgs_optimize(dataset_t *dataset, model_t *model,
 }
 
 int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
-    lbfgs_parameter_t *params, double l2_sigma_sq)
+    lbfgs_parameter_t *params, double l2_sigma_sq, int grafting_n)
 {
   model->f_restrict = feature_set_alloc();
 
@@ -151,7 +151,8 @@ int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
     &selection_model};
 
 
-  while (1) {
+  int thresh_reached = 0;
+  while (!thresh_reached) {
     fprintf(stderr, "--- Feature selection ---\n");
     memcpy(selection_model.params, model->params, model->n_params);
     int r = lbfgs(dataset->n_features, selection_model.params, 0,
@@ -189,23 +190,34 @@ int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
     for (int i = 0; i < dataset->n_features; ++i)
       g[i] += selection_model.params[i] * l2_sigma; 
 
-    double maxG = 0.0;
-    int maxF = -1;
-
+    feature_scores *scores = feature_scores_alloc();
     for (int i = 0; i < dataset->n_features; ++i)
-      if (!feature_set_contains(model->f_restrict, i) &&
-          fabs(g[i]) > fabs(maxG)) {
-        maxG = g[i];
-        maxF = i;
+      if (!feature_set_contains(model->f_restrict, i))
+        feature_scores_insert(scores, i, g[i]);
+
+    fprintf(stderr, "--> Selected features:");
+
+    int i;
+    feature_scores_node *n;
+    for (i = 0, n = feature_scores_begin(scores);
+          n != scores->nil, i < grafting_n;
+          n = feature_scores_next(scores, n), ++i) {
+      feature_score_t *score = (feature_score_t *) n->key;
+
+      if (selection_model.params[score->feature] == 0.) {
+        thresh_reached = 1;
+        break;
       }
 
-    if (selection_model.params[maxF] == 0.)
-      break;
+      fprintf(stderr, " %d", score->feature);
+      feature_set_insert(model->f_restrict, score->feature);
+    }
 
-    fprintf(stderr, "--> Selected feature: %d (%f)\n", maxF, maxG);
-    //for (int i = 0; i < dataset->n_features; ++i)
-    //  fprintf(stdout, "g[%d]: %f\n", g[i]);
-    feature_set_insert(model->f_restrict, maxF);
+    // No features...
+    if (i == 0)
+     break;
+
+    fprintf(stderr, "\n");
 
     fprintf(stderr, "--- Optimizing model ---\n");
     r = lbfgs(dataset->n_features, model->params, 0, maxent_lbfgs_evaluate,

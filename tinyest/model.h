@@ -22,12 +22,29 @@
 #include "lbfgs.h"
 #include "rbtree/red_black_tree.h"
 
+/* Set of features */
 typedef rb_red_blk_tree feature_set;
 feature_set *feature_set_alloc();
 void feature_set_free(feature_set *set);
 int feature_set_contains(feature_set *set, int f);
 void feature_set_insert(feature_set *set, int f);
 
+/* Features, ordered by score. */
+typedef struct {
+  int feature;
+  double score;
+} feature_score_t;
+
+typedef rb_red_blk_tree feature_scores;
+typedef rb_red_blk_node feature_scores_node;
+feature_scores *feature_scores_alloc();
+void feature_scores_free(feature_scores *scores);
+void feature_scores_insert(feature_scores *scores, int f, double score);
+feature_scores_node *feature_scores_begin(feature_scores *tree);
+feature_scores_node *feature_scores_next(feature_scores *tree,
+    feature_scores_node *node);
+
+/* Model */
 typedef struct {
   size_t n_params;
   lbfgsfloatval_t *params;
