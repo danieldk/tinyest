@@ -193,7 +193,7 @@ int main(int argc, char *argv[]) {
   model_t model;
   model_new(&model, ds.n_features);
 
-  fprintf(stderr, "Iter\tLL\t\txnorm\t\tgnorm\n\n");
+  fprintf(stderr, "Iter\t-LL\t\txnorm\t\tgnorm\n\n");
 
   if (grafting) {
     r = maxent_lbfgs_grafting(&ds, &model, &params, l2_sigma_sq, grafting);
