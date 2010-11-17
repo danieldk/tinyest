@@ -151,8 +151,7 @@ int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
     &selection_model};
 
 
-  int thresh_reached = 0;
-  while (!thresh_reached) {
+  while (1) {
     fprintf(stderr, "--- Feature selection ---\n");
     memcpy(selection_model.params, model->params, model->n_params);
     int r = lbfgs(dataset->n_features, selection_model.params, 0,
@@ -190,6 +189,7 @@ int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
     for (int i = 0; i < dataset->n_features; ++i)
       g[i] += selection_model.params[i] * l2_sigma; 
 
+    // Order features by gradient.
     feature_scores *scores = feature_scores_alloc();
     for (int i = 0; i < dataset->n_features; ++i)
       if (!feature_set_contains(model->f_restrict, i))
@@ -197,25 +197,27 @@ int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
 
     fprintf(stderr, "--> Selected features:");
 
-    int i;
-    feature_scores_node *n;
-    for (i = 0, n = feature_scores_begin(scores);
-          n != scores->nil, i < grafting_n;
-          n = feature_scores_next(scores, n), ++i) {
+    int i = 0;
+    feature_scores_node *n = feature_scores_begin(scores);
+    while (n != scores->nil && i < grafting_n) {
       feature_score_t *score = (feature_score_t *) n->key;
-
       if (selection_model.params[score->feature] == 0.) {
-        thresh_reached = 1;
-        break;
+        n = feature_scores_next(scores, n);
+        continue;
       }
 
       fprintf(stderr, " %d", score->feature);
       feature_set_insert(model->f_restrict, score->feature);
+
+      ++i;
+      n = feature_scores_next(scores, n);
     }
 
     // No features...
-    if (i == 0)
-     break;
+    if (i == 0) {
+      fprintf(stderr, "done!\n");
+      break;
+    }
 
     fprintf(stderr, "\n");
 
