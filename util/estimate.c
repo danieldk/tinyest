@@ -32,7 +32,7 @@ static struct option longopts[] = {
   { "ftol", required_argument, NULL, 1},
   { "gtol", required_argument, NULL, 2},
   { "grafting", required_argument, NULL, 3},
-  { "grafting-light", no_argument, NULL, 4},
+  { "grafting-light", required_argument, NULL, 4},
   { "l1", required_argument, NULL, 5},
   { "l2", required_argument, NULL, 6},
   { "linesearch", required_argument, NULL, 7},
@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
       grafting = str_to_int(optarg);
       break;
     case 4:
-      grafting_light = 1;
+      grafting_light = str_to_int(optarg);
       break;
     case 5:
       params.orthantwise_c = str_to_double(optarg);
@@ -171,9 +171,6 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  if (grafting_light)
-    grafting = 1;
-
   fprintf(stderr, "L1 norm coefficient: %.2f\n", params.orthantwise_c); 
   fprintf(stderr, "L2 prior sigma^2: %.4e\n\n", l2_sigma_sq);
 
@@ -208,10 +205,12 @@ int main(int argc, char *argv[]) {
 
   fprintf(stderr, "Iter\t-LL\t\txnorm\t\tgnorm\n\n");
 
-  if (grafting) {
-    r = maxent_lbfgs_grafting(&ds, &model, &params, l2_sigma_sq, grafting,
+  if (grafting)
+    r = maxent_lbfgs_grafting(&ds, &model, &params, l2_sigma_sq, grafting);
+  else if (grafting_light)
+    r = maxent_lbfgs_grafting_light(&ds, &model, &params, l2_sigma_sq,
         grafting_light);
-  } else
+  else
     r = maxent_lbfgs_optimize(&ds, &model, &params, l2_sigma_sq);
 
   dataset_free(&ds);

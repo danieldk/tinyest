@@ -160,45 +160,21 @@ void maxent_feature_gradients(dataset_t *dataset,
   }
 }
 
-int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
-    lbfgs_parameter_t *params, double l2_sigma_sq, int grafting_n,
-    int light)
+int maxent_select_features(dataset_t *dataset, lbfgs_parameter_t *params,
+    model_t *model, double *gradients, int n_select)
 {
-  model->f_restrict = feature_set_alloc();
-  if (light)
-    params->max_iterations = 1;
-
-
-  double l2_sigma = 0.0;
-  if (l2_sigma_sq != 0.0)
-   l2_sigma = 1.0 / l2_sigma_sq;
-
-  lbfgsfloatval_t *g = lbfgs_malloc(dataset->n_features);
-
-  double *fvals = dataset_feature_values(dataset);
-  maxent_lbfgs_data_t lbfgs_data = {l2_sigma_sq, dataset, fvals, model};
-
-
-  while (1) {
-    fprintf(stderr, "--- Feature selection ---\n");
-    maxent_feature_gradients(dataset, model->params, g); 
-
-    //for (int i = 0; i < dataset->n_features; ++i)
-    //  g[i] += selection_model.params[i] * l2_sigma; 
-
     // Order features by gradient.
     feature_scores *scores = feature_scores_alloc();
     for (int i = 0; i < dataset->n_features; ++i)
       if (!feature_set_contains(model->f_restrict, i))
-        feature_scores_insert(scores, i, g[i]);
+        feature_scores_insert(scores, i, gradients[i]);
 
-    fprintf(stderr, "--> Selected features:");
-
+    // Pick features with the highest gradient.
     int i = 0;
     feature_scores_node *n = feature_scores_begin(scores);
-    while (n != scores->nil && i < grafting_n) {
+    while (n != scores->nil && i < n_select) {
       feature_score_t *score = (feature_score_t *) n->key;
-      if (fabs(g[score->feature]) <= params->orthantwise_c) {
+      if (fabs(score->score) <= params->orthantwise_c) {
         n = feature_scores_next(scores, n);
         continue;
       }
@@ -210,8 +186,73 @@ int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
       n = feature_scores_next(scores, n);
     }
 
+    feature_scores_free(scores);
+
+    return i;
+}
+
+int maxent_lbfgs_grafting_light(dataset_t *dataset, model_t *model,
+    lbfgs_parameter_t *params, double l2_sigma_sq, int grafting_n)
+{
+  model->f_restrict = feature_set_alloc();
+  params->max_iterations = 1;
+
+  lbfgsfloatval_t *g = lbfgs_malloc(dataset->n_features);
+
+  double *fvals = dataset_feature_values(dataset);
+  maxent_lbfgs_data_t lbfgs_data = {l2_sigma_sq, dataset, fvals, model};
+
+  int r;
+  while (1) {
+    fprintf(stderr, "--- Feature selection ---\n");
+
+    // Calculate feature gradients.
+    maxent_feature_gradients(dataset, model->params, g); 
+
+    fprintf(stderr, "--> Selected features:");
+
+    // Select most promising features.
+    int n_selected = maxent_select_features(dataset, params, model, g,
+        grafting_n);
+
+    fprintf(stderr, "\n");
+
+    fprintf(stderr, "--- Optimizing model ---\n");
+    r = lbfgs(dataset->n_features, model->params, 0, maxent_lbfgs_evaluate,
+      maxent_lbfgs_progress_verbose, &lbfgs_data, params);
+    if (r != LBFGSERR_MAXIMUMITERATION)
+      break;
+  }
+
+  return r;
+}
+
+int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
+    lbfgs_parameter_t *params, double l2_sigma_sq, int grafting_n)
+{
+  model->f_restrict = feature_set_alloc();
+
+  lbfgsfloatval_t *g = lbfgs_malloc(dataset->n_features);
+
+  double *fvals = dataset_feature_values(dataset);
+  maxent_lbfgs_data_t lbfgs_data = {l2_sigma_sq, dataset, fvals, model};
+
+
+  int r = LBFGS_SUCCESS;
+  while (1) {
+    fprintf(stderr, "--- Feature selection ---\n");
+
+    // Calculate feature gradients.
+    maxent_feature_gradients(dataset, model->params, g); 
+
+    fprintf(stderr, "--> Selected features:");
+
+    // Select most promising features.
+    int n_selected = maxent_select_features(dataset, params, model, g,
+        grafting_n);
+
     // No features...
-    if (i == 0) {
+    if (n_selected == 0) {
       fprintf(stderr, "done!\n");
       break;
     }
@@ -221,17 +262,13 @@ int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
     fprintf(stderr, "--- Optimizing model ---\n");
     int r = lbfgs(dataset->n_features, model->params, 0, maxent_lbfgs_evaluate,
       maxent_lbfgs_progress_verbose, &lbfgs_data, params);
-  }
-
-  if (light) {
-    params->max_iterations = 0;
-    lbfgs(dataset->n_features, model->params, 0, maxent_lbfgs_evaluate,
-      maxent_lbfgs_progress_verbose, &lbfgs_data, params);
+    if (r != LBFGS_STOP && r != LBFGS_SUCCESS && r != LBFGS_ALREADY_MINIMIZED)
+      break;
   }
 
   lbfgs_free(g);
 
-  return 0;
+  return r;
 }
 
 int maxent_lbfgs_progress_verbose(void *instance, lbfgsfloatval_t const *x,

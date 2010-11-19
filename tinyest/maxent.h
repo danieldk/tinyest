@@ -39,8 +39,10 @@ void maxent_feature_gradients(dataset_t *dataset,
     lbfgsfloatval_t *gradients);
 
 int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
-    lbfgs_parameter_t *params, double l2_sigma_sq, int grafting_n,
-    int light);
+    lbfgs_parameter_t *params, double l2_sigma_sq, int grafting_n);
+
+int maxent_lbfgs_grafting_light(dataset_t *dataset, model_t *model,
+    lbfgs_parameter_t *params, double l2_sigma_sq, int grafting_n);
 
 int maxent_lbfgs_optimize(dataset_t *dataset, model_t *model,
     lbfgs_parameter_t *param, double l2_sigma_sq);
