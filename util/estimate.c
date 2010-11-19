@@ -32,11 +32,12 @@ static struct option longopts[] = {
   { "ftol", required_argument, NULL, 1},
   { "gtol", required_argument, NULL, 2},
   { "grafting", required_argument, NULL, 3},
-  { "l1", required_argument, NULL, 4},
-  { "l2", required_argument, NULL, 5},
-  { "linesearch", required_argument, NULL, 6},
-  { "minstep", required_argument, NULL, 7},
-  { "maxstep", required_argument, NULL, 8},
+  { "grafting-light", no_argument, NULL, 4},
+  { "l1", required_argument, NULL, 5},
+  { "l2", required_argument, NULL, 6},
+  { "linesearch", required_argument, NULL, 7},
+  { "minstep", required_argument, NULL, 8},
+  { "maxstep", required_argument, NULL, 9},
   { NULL, 0, NULL, 0 }
 };
 
@@ -96,6 +97,7 @@ int main(int argc, char *argv[]) {
   char *program_name = argv[0];
   double l2_sigma_sq = 0.0;
   int grafting = 0;
+  int grafting_light = 0;
 
   lbfgs_parameter_t params;
   lbfgs_parameter_init(&params);
@@ -115,12 +117,15 @@ int main(int argc, char *argv[]) {
       grafting = str_to_int(optarg);
       break;
     case 4:
-      params.orthantwise_c = str_to_double(optarg);
+      grafting_light = 1;
       break;
     case 5:
-      l2_sigma_sq = str_to_double(optarg);
+      params.orthantwise_c = str_to_double(optarg);
       break;
     case 6:
+      l2_sigma_sq = str_to_double(optarg);
+      break;
+    case 7:
       if (strcmp(optarg, "armijo") == 0)
         params.linesearch = LBFGS_LINESEARCH_BACKTRACKING_ARMIJO;
       else if (strcmp(optarg, "backtracking") == 0)
@@ -134,11 +139,11 @@ int main(int argc, char *argv[]) {
         return 1;
       }
       break;
-    case 7:
+    case 8:
       fprintf(stderr,"backtracking\n");
       params.min_step = str_to_double(optarg);
       break;
-    case 8:
+    case 9:
       params.max_step = str_to_double(optarg);
       break;
     case '?':
@@ -156,10 +161,18 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  if (grafting && params.orthantwise_c == 0.) {
+  if (grafting && grafting_light) {
+    fprintf(stderr, "Grafting and grafting-light cannot be used simultaneously...");
+    return 1;
+  }
+
+  if ((grafting || grafting_light) && params.orthantwise_c == 0.) {
     fprintf(stderr, "Grafting requires a l1 norm coefficient...");
     return 1;
   }
+
+  if (grafting_light)
+    grafting = 1;
 
   fprintf(stderr, "L1 norm coefficient: %.2f\n", params.orthantwise_c); 
   fprintf(stderr, "L2 prior sigma^2: %.4e\n\n", l2_sigma_sq);
@@ -196,7 +209,8 @@ int main(int argc, char *argv[]) {
   fprintf(stderr, "Iter\t-LL\t\txnorm\t\tgnorm\n\n");
 
   if (grafting) {
-    r = maxent_lbfgs_grafting(&ds, &model, &params, l2_sigma_sq, grafting);
+    r = maxent_lbfgs_grafting(&ds, &model, &params, l2_sigma_sq, grafting,
+        grafting_light);
   } else
     r = maxent_lbfgs_optimize(&ds, &model, &params, l2_sigma_sq);
 

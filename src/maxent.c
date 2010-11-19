@@ -125,69 +125,66 @@ int maxent_lbfgs_optimize(dataset_t *dataset, model_t *model,
   return r;
 }
 
+void maxent_feature_gradients(dataset_t *dataset,
+    lbfgsfloatval_t *params,
+    lbfgsfloatval_t *gradients)
+{
+  double *fvals = dataset_feature_values(dataset);
+
+  for (int i = 0; i < dataset->n_features; ++i)
+    gradients[i] = -fvals[i];
+
+  dataset_context_t *ctxs = dataset->contexts;
+  for (int i = 0; i < dataset->n_contexts; ++i) 
+  {
+    if (ctxs[i].p == 0.0)
+      continue;
+
+    double *sums = malloc(ctxs[i].n_events * sizeof(double));
+    memset(sums, 0, ctxs[i].n_events * sizeof(double));
+    double z = 0.0;
+
+    maxent_context_sums(&ctxs[i], params, sums, &z, 0);
+
+    dataset_event_t *evts = ctxs[i].events;
+    for (int j = 0; j < ctxs[i].n_events; ++j) {
+      // p(y|x)
+      double p_yx = sums[j] / z;
+
+      // Contribution of this context to p(f).
+      feature_value_t *fvals = evts[j].fvals;
+      for (int k = 0; k < evts[j].n_fvals; ++k)
+        gradients[fvals[k].feature] += ctxs[i].p * p_yx * fvals[k].value;
+    }
+    free(sums);
+  }
+}
+
 int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
-    lbfgs_parameter_t *params, double l2_sigma_sq, int grafting_n)
+    lbfgs_parameter_t *params, double l2_sigma_sq, int grafting_n,
+    int light)
 {
   model->f_restrict = feature_set_alloc();
+  if (light)
+    params->max_iterations = 1;
 
-  lbfgs_parameter_t selectionParams;
-  memcpy(&selectionParams, params, sizeof(lbfgs_parameter_t));
-  selectionParams.max_iterations = 1;
-
-  model_t selection_model = { model->n_params, 0, 0};
-  selection_model.params = lbfgs_malloc(model->n_params);
 
   double l2_sigma = 0.0;
   if (l2_sigma_sq != 0.0)
    l2_sigma = 1.0 / l2_sigma_sq;
 
-
   lbfgsfloatval_t *g = lbfgs_malloc(dataset->n_features);
-
 
   double *fvals = dataset_feature_values(dataset);
   maxent_lbfgs_data_t lbfgs_data = {l2_sigma_sq, dataset, fvals, model};
-  maxent_lbfgs_data_t lbfgs_selection_data = {l2_sigma_sq, dataset, fvals,
-    &selection_model};
 
 
   while (1) {
     fprintf(stderr, "--- Feature selection ---\n");
-    memcpy(selection_model.params, model->params, model->n_params);
-    int r = lbfgs(dataset->n_features, selection_model.params, 0,
-        maxent_lbfgs_evaluate, maxent_lbfgs_progress_verbose,
-        &lbfgs_selection_data, &selectionParams);
+    maxent_feature_gradients(dataset, model->params, g); 
 
-    for (int i = 0; i < dataset->n_features; ++i)
-      g[i] = -fvals[i];
-
-    dataset_context_t *ctxs = dataset->contexts;
-    for (int i = 0; i < dataset->n_contexts; ++i) 
-    {
-      if (ctxs[i].p == 0.0)
-        continue;
-
-      double *sums = malloc(ctxs[i].n_events * sizeof(double));
-      memset(sums, 0, ctxs[i].n_events * sizeof(double));
-      double z = 0.0;
-
-      maxent_context_sums(&ctxs[i], selection_model.params, sums, &z, 0);
-
-      dataset_event_t *evts = ctxs[i].events;
-      for (int j = 0; j < ctxs[i].n_events; ++j) {
-        // p(y|x)
-        double p_yx = sums[j] / z;
-
-        // Contribution of this context to p(f).
-        feature_value_t *fvals = evts[j].fvals;
-        for (int k = 0; k < evts[j].n_fvals; ++k)
-          g[fvals[k].feature] += ctxs[i].p * p_yx * fvals[k].value;
-      }
-      free(sums);
-    }
-
-    for (int i = 0; i < dataset->n_features; ++i)
-      g[i] += selection_model.params[i] * l2_sigma; 
+    //for (int i = 0; i < dataset->n_features; ++i)
+    //  g[i] += selection_model.params[i] * l2_sigma; 
 
     // Order features by gradient.
     feature_scores *scores = feature_scores_alloc();
@@ -201,7 +198,7 @@ int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
     feature_scores_node *n = feature_scores_begin(scores);
     while (n != scores->nil && i < grafting_n) {
       feature_score_t *score = (feature_score_t *) n->key;
-      if (selection_model.params[score->feature] == 0.) {
+      if (fabs(g[score->feature]) <= params->orthantwise_c) {
         n = feature_scores_next(scores, n);
         continue;
       }
@@ -222,7 +219,13 @@ int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
     fprintf(stderr, "\n");
 
     fprintf(stderr, "--- Optimizing model ---\n");
-    r = lbfgs(dataset->n_features, model->params, 0, maxent_lbfgs_evaluate,
+    int r = lbfgs(dataset->n_features, model->params, 0, maxent_lbfgs_evaluate,
+      maxent_lbfgs_progress_verbose, &lbfgs_data, params);
+  }
+
+  if (light) {
+    params->max_iterations = 0;
+    lbfgs(dataset->n_features, model->params, 0, maxent_lbfgs_evaluate,
       maxent_lbfgs_progress_verbose, &lbfgs_data, params);
   }
 
