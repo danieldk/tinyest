@@ -179,7 +179,7 @@ int maxent_select_features(dataset_t *dataset, lbfgs_parameter_t *params,
         continue;
       }
 
-      fprintf(stderr, " %d", score->feature);
+      fprintf(stderr, "* %d\n", score->feature);
       feature_set_insert(model->f_restrict, score->feature);
 
       ++i;
@@ -209,13 +209,9 @@ int maxent_lbfgs_grafting_light(dataset_t *dataset, model_t *model,
     // Calculate feature gradients.
     maxent_feature_gradients(dataset, model->params, g); 
 
-    fprintf(stderr, "--> Selected features:");
-
     // Select most promising features.
     int n_selected = maxent_select_features(dataset, params, model, g,
         grafting_n);
-
-    fprintf(stderr, "\n");
 
     fprintf(stderr, "--- Optimizing model ---\n");
     r = lbfgs(dataset->n_features, model->params, 0, maxent_lbfgs_evaluate,
@@ -245,8 +241,6 @@ int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
     // Calculate feature gradients.
     maxent_feature_gradients(dataset, model->params, g); 
 
-    fprintf(stderr, "--> Selected features:");
-
     // Select most promising features.
     int n_selected = maxent_select_features(dataset, params, model, g,
         grafting_n);
@@ -256,8 +250,6 @@ int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
       fprintf(stderr, "done!\n");
       break;
     }
-
-    fprintf(stderr, "\n");
 
     fprintf(stderr, "--- Optimizing model ---\n");
     int r = lbfgs(dataset->n_features, model->params, 0, maxent_lbfgs_evaluate,
