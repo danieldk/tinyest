@@ -9,6 +9,14 @@ optimizer. It uses the liblbfgs library to minimize the negative
 log-likelihood of the model. The program emphasizes simplicity and clarity
 of data structures.
 
+TinyEst has the following features:
+
+* LBFGS parameter estimation.
+* Smoothing using l1 and l2 regularizers.
+* Feature selection methods:
+  - Grafting
+  - Grafting-light
+
 ## Compilation
 
 Compilation of TinyEst requires a C99 compiler and the CMake build tool,
