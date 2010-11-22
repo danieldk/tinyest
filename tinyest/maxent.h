@@ -24,12 +24,11 @@
 typedef struct {
   double l2_sigma_sq;
   dataset_t *dataset;
-  double *feature_values;
   model_t *model;
 } maxent_lbfgs_data_t;
 
 void maxent_context_sums(dataset_context_t *ctx, lbfgsfloatval_t const *params,
-    double *sums, double *z, feature_set *set);
+    double *sums, double *z, bitvector_t *f_restrict);
 
 lbfgsfloatval_t maxent_lbfgs_evaluate(void *instance, lbfgsfloatval_t const *x,
   lbfgsfloatval_t *g, int const n, lbfgsfloatval_t const step);

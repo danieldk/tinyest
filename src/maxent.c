@@ -18,19 +18,20 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <tinyest/bitvector.h>
 #include <tinyest/dataset.h>
 #include <tinyest/lbfgs.h>
 #include <tinyest/maxent.h>
 #include <tinyest/model.h>
 
 void maxent_context_sums(dataset_context_t *ctx, lbfgsfloatval_t const *params,
-    double *sums, double *z, feature_set *f_restrict)
+    double *sums, double *z, bitvector_t *f_restrict)
 {
   dataset_event_t *evts = ctx->events;
   for (int j = 0; j < ctx->n_events; ++j) {
     feature_value_t *fvals = evts[j].fvals;
     for (int k = 0; k < evts[j].n_fvals; ++k)
-      if (f_restrict == 0 || feature_set_contains(f_restrict, fvals[k].feature))
+      if (f_restrict == 0 || bitvector_get(f_restrict, fvals[k].feature))
         sums[j] += params[fvals[k].feature] * fvals[k].value;
 
     sums[j] = exp(sums[j]);
@@ -43,11 +44,12 @@ lbfgsfloatval_t maxent_lbfgs_evaluate(void *instance, lbfgsfloatval_t const *x,
 {
   maxent_lbfgs_data_t *d= (maxent_lbfgs_data_t *) instance;
   dataset_t *ds = d->dataset;
+  double *fvals = ds->feature_values;
 
   for (int i = 0; i < d->dataset->n_features; ++i)
     if (d->model->f_restrict == 0 ||
-      feature_set_contains(d->model->f_restrict, i))
-    g[i] = -d->feature_values[i];
+      bitvector_get(d->model->f_restrict, i))
+    g[i] = -fvals[i];
 
   lbfgsfloatval_t ll = 0.0;
 
@@ -79,7 +81,7 @@ lbfgsfloatval_t maxent_lbfgs_evaluate(void *instance, lbfgsfloatval_t const *x,
       feature_value_t *fvals = evts[j].fvals;
       for (int k = 0; k < evts[j].n_fvals; ++k)
         if (d->model->f_restrict == 0 ||
-            feature_set_contains(d->model->f_restrict, fvals[k].feature)) {
+            bitvector_get(d->model->f_restrict, fvals[k].feature)) {
           g[fvals[k].feature] += ctxs[i].p * p_yx * fvals[k].value;
         }
     }
@@ -96,7 +98,7 @@ lbfgsfloatval_t maxent_lbfgs_evaluate(void *instance, lbfgsfloatval_t const *x,
 
     for (int i = 0; i < d->dataset->n_features; ++i) {
       if (d->model->f_restrict &&
-          !feature_set_contains(d->model->f_restrict, i))
+          !bitvector_get(d->model->f_restrict, i))
         continue;
       f_sq_sum += pow(x[i], 2.0);
 
@@ -114,13 +116,10 @@ lbfgsfloatval_t maxent_lbfgs_evaluate(void *instance, lbfgsfloatval_t const *x,
 int maxent_lbfgs_optimize(dataset_t *dataset, model_t *model,
      lbfgs_parameter_t *params, double l2_sigma_sq)
 {
-  double *fvals = dataset_feature_values(dataset);
-  maxent_lbfgs_data_t lbfgs_data = {l2_sigma_sq, dataset, fvals, model};
+  maxent_lbfgs_data_t lbfgs_data = {l2_sigma_sq, dataset, model};
 
   int r = lbfgs(dataset->n_features, model->params, 0, maxent_lbfgs_evaluate,
       maxent_lbfgs_progress_verbose, &lbfgs_data, params);
-
-  free(fvals);
 
   return r;
 }
@@ -129,7 +128,7 @@ void maxent_feature_gradients(dataset_t *dataset,
     lbfgsfloatval_t *params,
     lbfgsfloatval_t *gradients)
 {
-  double *fvals = dataset_feature_values(dataset);
+  double *fvals = dataset->feature_values;
 
   for (int i = 0; i < dataset->n_features; ++i)
     gradients[i] = -fvals[i];
@@ -166,7 +165,7 @@ int maxent_select_features(dataset_t *dataset, lbfgs_parameter_t *params,
     // Order features by gradient.
     feature_scores *scores = feature_scores_alloc();
     for (int i = 0; i < dataset->n_features; ++i)
-      if (!feature_set_contains(model->f_restrict, i))
+      if (!bitvector_get(model->f_restrict, i))
         feature_scores_insert(scores, i, gradients[i]);
 
     // Pick features with the highest gradient.
@@ -180,7 +179,7 @@ int maxent_select_features(dataset_t *dataset, lbfgs_parameter_t *params,
       }
 
       fprintf(stderr, "* %d\n", score->feature);
-      feature_set_insert(model->f_restrict, score->feature);
+      bitvector_set(model->f_restrict, score->feature, 1);
 
       ++i;
       n = feature_scores_next(scores, n);
@@ -194,15 +193,15 @@ int maxent_select_features(dataset_t *dataset, lbfgs_parameter_t *params,
 int maxent_lbfgs_grafting_light(dataset_t *dataset, model_t *model,
     lbfgs_parameter_t *params, double l2_sigma_sq, int grafting_n)
 {
-  model->f_restrict = feature_set_alloc();
+  model->f_restrict = bitvector_alloc(dataset->n_features);
   params->max_iterations = 1;
 
   lbfgsfloatval_t *g = lbfgs_malloc(dataset->n_features);
 
-  double *fvals = dataset_feature_values(dataset);
-  maxent_lbfgs_data_t lbfgs_data = {l2_sigma_sq, dataset, fvals, model};
+  double *fvals = dataset->feature_values;
+  maxent_lbfgs_data_t lbfgs_data = {l2_sigma_sq, dataset, model};
 
-  int r;
+  int r = LBFGS_SUCCESS;
   while (1) {
     fprintf(stderr, "--- Feature selection ---\n");
 
@@ -210,15 +209,18 @@ int maxent_lbfgs_grafting_light(dataset_t *dataset, model_t *model,
     maxent_feature_gradients(dataset, model->params, g); 
 
     // Select most promising features.
-    int n_selected = maxent_select_features(dataset, params, model, g,
+    (int) maxent_select_features(dataset, params, model, g,
         grafting_n);
 
     fprintf(stderr, "--- Optimizing model ---\n");
     r = lbfgs(dataset->n_features, model->params, 0, maxent_lbfgs_evaluate,
       maxent_lbfgs_progress_verbose, &lbfgs_data, params);
-    if (r != LBFGSERR_MAXIMUMITERATION)
+    if (r != LBFGSERR_MAXIMUMITERATION && r != LBFGS_STOP)
       break;
   }
+
+  lbfgs_free(g);
+  bitvector_free(model->f_restrict);
 
   return r;
 }
@@ -226,12 +228,12 @@ int maxent_lbfgs_grafting_light(dataset_t *dataset, model_t *model,
 int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
     lbfgs_parameter_t *params, double l2_sigma_sq, int grafting_n)
 {
-  model->f_restrict = feature_set_alloc();
+  model->f_restrict = bitvector_alloc(dataset->n_features);
 
   lbfgsfloatval_t *g = lbfgs_malloc(dataset->n_features);
 
-  double *fvals = dataset_feature_values(dataset);
-  maxent_lbfgs_data_t lbfgs_data = {l2_sigma_sq, dataset, fvals, model};
+  double *fvals = dataset->feature_values;
+  maxent_lbfgs_data_t lbfgs_data = {l2_sigma_sq, dataset, model};
 
 
   int r = LBFGS_SUCCESS;
@@ -259,6 +261,7 @@ int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
   }
 
   lbfgs_free(g);
+  bitvector_free(model->f_restrict);
 
   return r;
 }

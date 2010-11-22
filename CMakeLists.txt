@@ -40,6 +40,7 @@ endif()
 find_library(M_LIB m)
 
 set (LIBTINYEST_SOURCES
+  src/bitvector.c
   src/dataset.c
   src/lbfgs.c
   src/maxent.c

@@ -15,6 +15,7 @@
  */
 
 #include <math.h>
+#include <string.h>
 
 #include <tinyest/lbfgs.h>
 #include <tinyest/model.h>
@@ -33,29 +34,7 @@ void model_free(model_t *model)
   lbfgs_free(model->params);
 }
 
-int int_comp(void const *a, void const *b) {
-  if (*(int *) a > *(int *) b)
-    return 1;
-  if (*(int *) a < *(int *) b)
-    return -1;
-  return 0;
-}
-
-void int_dealloc(void *a) {
-  free((int *) a);
-}
-
-void int_print(void const *a) {}
-void info_print(void *a) {}
-void info_dealloc(void *a) {}
-
-feature_set *feature_set_alloc() {
-  return RBTreeCreate(int_comp, int_dealloc, info_dealloc, int_print, info_print);
-}
-
-void feature_set_free(feature_set *set) {
-  RBTreeDestroy(set);
-}
+/* Feature scores. */
 
 int feature_scores_comp(void const *a, void const *b) {
   feature_score_t *fs_a = (feature_score_t *) a;
@@ -73,25 +52,13 @@ int feature_scores_comp(void const *a, void const *b) {
     return 0;
 }
 
-int feature_set_contains(feature_set *set, int f) {
-  if ((RBExactQuery(set, &f)) == 0)
-    return 0;
-  else
-    return 1;
-}
-
-void feature_set_insert(feature_set *set, int f) {
-  int *new = (int *) malloc(sizeof(int));
-  *new = f;
-  RBTreeInsert(set, new, 0);
-}
-
-/* Feature scores. */
-
 void feature_scores_dealloc(void *a) {
   free((feature_scores *) a);
 }
 void feature_scores_print(void const *a) {}
+
+void info_dealloc(void *a) {}
+void info_print(void *a) {}
 
 feature_scores *feature_scores_alloc() {
     return RBTreeCreate(feature_scores_comp, feature_scores_dealloc,

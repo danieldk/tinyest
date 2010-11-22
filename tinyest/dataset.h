@@ -42,6 +42,7 @@ typedef struct {
   size_t n_features;
   size_t n_contexts;
   dataset_context_t *contexts;
+  double *feature_values;
 } dataset_t;
 
 enum tadm_read_status {

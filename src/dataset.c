@@ -98,6 +98,9 @@ void dataset_free(dataset_t *dataset)
     free(dataset->contexts);
     dataset->contexts = NULL;
   }
+
+  if (dataset->feature_values != NULL)
+    free(dataset->feature_values);
 }
 
 void dataset_context_free(dataset_context_t *context)
@@ -132,6 +135,7 @@ int read_tadm_dataset(int fd, dataset_t *dataset)
   memset(dataset, 0, sizeof(dataset_t));
 
   dataset->contexts = NULL;
+  dataset->feature_values = NULL;
 
   while (1) {
     dataset_context_t ctx;
@@ -151,9 +155,11 @@ int read_tadm_dataset(int fd, dataset_t *dataset)
       sizeof(dataset_context_t));
   }
 
-  dataset->n_features = dataset_count_features(dataset);
-
   gzclose(f);
+
+  dataset_normalize(dataset);
+  dataset->n_features = dataset_count_features(dataset);
+  dataset->feature_values = dataset_feature_values(dataset);
 
   return TADM_OK;
 }

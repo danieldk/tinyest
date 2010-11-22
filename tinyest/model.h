@@ -19,15 +19,9 @@
 
 #include <stddef.h>
 
+#include "bitvector.h"
 #include "lbfgs.h"
 #include "rbtree/red_black_tree.h"
-
-/* Set of features */
-typedef rb_red_blk_tree feature_set;
-feature_set *feature_set_alloc();
-void feature_set_free(feature_set *set);
-int feature_set_contains(feature_set *set, int f);
-void feature_set_insert(feature_set *set, int f);
 
 /* Features, ordered by score. */
 typedef struct {
@@ -48,7 +42,7 @@ feature_scores_node *feature_scores_next(feature_scores *tree,
 typedef struct {
   size_t n_params;
   lbfgsfloatval_t *params;
-  rb_red_blk_tree *f_restrict;
+  bitvector_t *f_restrict;
 } model_t;
 
 typedef struct {

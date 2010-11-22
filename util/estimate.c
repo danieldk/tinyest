@@ -192,8 +192,6 @@ int main(int argc, char *argv[]) {
   fprintf(stderr, "Features: %zu\n", ds.n_features);
   fprintf(stderr, "Contexts: %zu\n\n", ds.n_contexts);
 
-  dataset_normalize(&ds);
-
   if (params.orthantwise_c != 0.0) {
     params.orthantwise_end = ds.n_features;
     // l1 prior only works with backtracking linesearch.
@@ -217,6 +215,7 @@ int main(int argc, char *argv[]) {
 
   if (r != LBFGS_STOP && r != LBFGS_SUCCESS && r != LBFGS_ALREADY_MINIMIZED) {
     fprintf(stderr, "lbfgs result: %d\n", r);
+    model_free(&model);
     return 1;
   }
 
