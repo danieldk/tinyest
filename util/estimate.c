@@ -171,8 +171,8 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  fprintf(stderr, "L1 norm coefficient: %.2f\n", params.orthantwise_c); 
-  fprintf(stderr, "L2 prior sigma^2: %.4e\n\n", l2_sigma_sq);
+  fprintf(stderr, "l1 norm coefficient: %.4e\n", params.orthantwise_c); 
+  fprintf(stderr, "l2 prior sigma^2: %.4e\n\n", l2_sigma_sq);
 
   dataset_t ds;
   
