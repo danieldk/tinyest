@@ -215,7 +215,7 @@ int maxent_lbfgs_grafting_light(dataset_t *dataset, model_t *model,
     fprintf(stderr, "--- Optimizing model ---\n");
     r = lbfgs(dataset->n_features, model->params, 0, maxent_lbfgs_evaluate,
       maxent_lbfgs_progress_verbose, &lbfgs_data, params);
-    if (r != LBFGSERR_MAXIMUMITERATION && r != LBFGS_STOP)
+    if (r != LBFGSERR_MAXIMUMITERATION)
       break;
   }
 
