@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <assert.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -159,35 +160,62 @@ void maxent_feature_gradients(dataset_t *dataset,
   }
 }
 
+int feature_score_compare(void const *l, void const *r)
+{
+  feature_score_t **lfs = (feature_score_t **) l;
+  feature_score_t **rfs = (feature_score_t **) r;
+
+  double l_score = fabs((*lfs)->score);
+  double r_score = fabs((*rfs)->score);
+
+  if (l_score > r_score)
+    return -1;
+  else if (l_score < r_score)
+    return 1;
+  else
+    return 0;
+}
+
 int maxent_select_features(dataset_t *dataset, lbfgs_parameter_t *params,
     model_t *model, double *gradients, int n_select)
 {
-    // Order features by gradient.
-    feature_scores *scores = feature_scores_alloc();
-    for (int i = 0; i < dataset->n_features; ++i)
-      if (!bitvector_get(model->f_restrict, i))
-        feature_scores_insert(scores, i, gradients[i]);
+  int n_unselected = dataset->n_features - model->f_restrict->on;
+
+  // Allocate memory for all unselected features.
+  feature_score_t **scores = (feature_score_t **)
+    malloc(sizeof(feature_score_t *) * n_unselected);
+  //memset(scores, 0, sizeof(feature_score_t *) * n_unselected);
+
+  for (int i = 0, cand = 0; i < dataset->n_features; ++i)
+      if (!bitvector_get(model->f_restrict, i)) {
+        scores[cand] = (feature_score_t *) malloc(sizeof(feature_score_t));
+        scores[cand]->feature = i;
+        scores[cand]->score = gradients[i];
+        ++cand;
+      }
+
+    assert(cand == n_unselected);
+    qsort(scores, n_unselected, sizeof(feature_score_t *),
+      feature_score_compare);
 
     // Pick features with the highest gradient.
-    int i = 0;
-    feature_scores_node *n = feature_scores_begin(scores);
-    while (n != scores->nil && i < n_select) {
-      feature_score_t *score = (feature_score_t *) n->key;
-      if (fabs(score->score) <= params->orthantwise_c) {
-        n = feature_scores_next(scores, n);
+    int cur_select = 0;
+    for (int i = 0; i < n_unselected && cur_select < n_select; ++i) {
+      feature_score_t *score = scores[i];
+      if (fabs(score->score) <= params->orthantwise_c)
         continue;
-      }
 
       fprintf(stderr, "* %d\n", score->feature);
       bitvector_set(model->f_restrict, score->feature, 1);
-
-      ++i;
-      n = feature_scores_next(scores, n);
+      ++cur_select;
     }
 
-    feature_scores_free(scores);
+    // Free up scores.
+    for (int i = 0; i < n_unselected; ++i)
+      free(scores[i]);
+    free(scores);
 
-    return i;
+    return cur_select;
 }
 
 int maxent_lbfgs_grafting_light(dataset_t *dataset, model_t *model,

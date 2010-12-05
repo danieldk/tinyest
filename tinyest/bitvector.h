@@ -5,6 +5,7 @@
 typedef struct {
   char *vector;
   size_t n;
+  size_t on;
 } bitvector_t;
 
 typedef struct {

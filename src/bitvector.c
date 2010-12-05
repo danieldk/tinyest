@@ -10,6 +10,8 @@ bitvector_t *bitvector_alloc(size_t n)
   bv->vector = (char *) malloc(sizeof(char) * n);
   memset(bv->vector, 0, sizeof(char) * n);
   bv->n = n;
+  bv->on = 0;
+
   return bv;
 }
 
@@ -17,11 +19,20 @@ void bitvector_free(bitvector_t *bv)
 {
   free(bv->vector);
   bv->n = 0;
+  bv->on = 0;
   free(bv);
 }
 
 void bitvector_set(bitvector_t *bv, size_t idx, char val) {
   assert(val == 0 || val == 1);
+
+  if (bv->vector[idx] != val) {
+    if (val == 1)
+      ++bv->on;
+    else
+      --bv->on;
+  }
+
   bv->vector[idx] = val;
 }
 

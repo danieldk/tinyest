@@ -21,22 +21,12 @@
 
 #include "bitvector.h"
 #include "lbfgs.h"
-#include "rbtree/red_black_tree.h"
 
 /* Features, ordered by score. */
 typedef struct {
   int feature;
   double score;
 } feature_score_t;
-
-typedef rb_red_blk_tree feature_scores;
-typedef rb_red_blk_node feature_scores_node;
-feature_scores *feature_scores_alloc();
-void feature_scores_free(feature_scores *scores);
-void feature_scores_insert(feature_scores *scores, int f, double score);
-feature_scores_node *feature_scores_begin(feature_scores *tree);
-feature_scores_node *feature_scores_next(feature_scores *tree,
-    feature_scores_node *node);
 
 /* Model */
 typedef struct {

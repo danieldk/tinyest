@@ -19,7 +19,6 @@
 
 #include <tinyest/lbfgs.h>
 #include <tinyest/model.h>
-#include <tinyest/rbtree/red_black_tree.h>
 
 void model_new(model_t *model, size_t n_params)
 {
@@ -32,65 +31,5 @@ void model_free(model_t *model)
 {
   model->n_params = 0;
   lbfgs_free(model->params);
-}
-
-/* Feature scores. */
-
-int feature_scores_comp(void const *a, void const *b) {
-  feature_score_t *fs_a = (feature_score_t *) a;
-  feature_score_t *fs_b = (feature_score_t *) b;
-
-  if (fabs(fs_a->score) > fabs(fs_b->score))
-    return -1;
-  else if (fabs(fs_a->score) < fabs(fs_b->score))
-    return 1;
-  else if (fs_a->feature > fs_b->feature)
-    return 1;
-  else if (fs_a->feature < fs_b->feature)
-    return -1;
-  else
-    return 0;
-}
-
-void feature_scores_dealloc(void *a) {
-  free((feature_scores *) a);
-}
-void feature_scores_print(void const *a) {}
-
-void info_dealloc(void *a) {}
-void info_print(void *a) {}
-
-feature_scores *feature_scores_alloc() {
-    return RBTreeCreate(feature_scores_comp, feature_scores_dealloc,
-        info_dealloc, feature_scores_print, info_print);
-}
-
-void feature_scores_free(feature_scores *scores)
-{
-  RBTreeDestroy(scores);
-}
-
-void feature_scores_insert(feature_scores *scores, int f, double score) {
-  feature_score_t *fs = (feature_score_t *) malloc(sizeof(feature_score_t));
-  fs->feature = f;
-  fs->score = score;
-  RBTreeInsert(scores, fs, 0);
-}
-
-feature_scores_node *feature_scores_begin(feature_scores *tree)
-{
-  rb_red_blk_node* nil = tree->nil;
-  rb_red_blk_node *x = tree->root;
-
-  while (x->left != nil)
-    x = x->left;
-
-  return x;
-}
-
-feature_scores_node *feature_scores_next(feature_scores *tree,
-    feature_scores_node *node)
-{
-  return TreeSuccessor(tree, node);
 }
 
