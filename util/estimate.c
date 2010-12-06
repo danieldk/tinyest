@@ -47,6 +47,7 @@ void usage(char *program_name)
   fprintf(stderr, "--ftol val\t\tLine search algorithm ftol (default: 1e-4)\n");
   fprintf(stderr, "--gtol val\t\tLine search algorithm gtol (default: 0.9)\n");
   fprintf(stderr, "--grafting n\t\tEnable grafting (feature selection)\n");
+  fprintf(stderr, "--grafting-light n\tEnable grafting-light (feature selection)\n");
   fprintf(stderr, "--l1 val\t\tl1 norm coefficient\n");
   fprintf(stderr, "--l2 val\t\tGaussian (l2) prior\n");
   fprintf(stderr, "--linesearch alg\tLine search algorithm: armijo, ");
