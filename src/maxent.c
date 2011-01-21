@@ -186,7 +186,9 @@ int maxent_select_features(dataset_t *dataset, lbfgs_parameter_t *params,
     malloc(sizeof(feature_score_t *) * n_unselected);
   //memset(scores, 0, sizeof(feature_score_t *) * n_unselected);
 
-  for (int i = 0, cand = 0; i < dataset->n_features; ++i)
+  int i;
+  int cand;
+  for (i = 0, cand = 0; i < dataset->n_features; ++i)
       if (!bitvector_get(model->f_restrict, i)) {
         scores[cand] = (feature_score_t *) malloc(sizeof(feature_score_t));
         scores[cand]->feature = i;
@@ -226,7 +228,6 @@ int maxent_lbfgs_grafting_light(dataset_t *dataset, model_t *model,
 
   lbfgsfloatval_t *g = lbfgs_malloc(dataset->n_features);
 
-  double *fvals = dataset->feature_values;
   maxent_lbfgs_data_t lbfgs_data = {l2_sigma_sq, dataset, model};
 
   int r = LBFGS_SUCCESS;
@@ -237,7 +238,7 @@ int maxent_lbfgs_grafting_light(dataset_t *dataset, model_t *model,
     maxent_feature_gradients(dataset, model->params, g); 
 
     // Select most promising features.
-    (int) maxent_select_features(dataset, params, model, g,
+    (void) maxent_select_features(dataset, params, model, g,
         grafting_n);
 
     fprintf(stderr, "--- Optimizing model ---\n");
@@ -260,9 +261,7 @@ int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
 
   lbfgsfloatval_t *g = lbfgs_malloc(dataset->n_features);
 
-  double *fvals = dataset->feature_values;
   maxent_lbfgs_data_t lbfgs_data = {l2_sigma_sq, dataset, model};
-
 
   int r = LBFGS_SUCCESS;
   while (1) {

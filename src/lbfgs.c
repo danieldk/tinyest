@@ -490,7 +490,7 @@ int lbfgs(
 
         /* Report the progress. */
         if (cd.proc_progress) {
-            if (ret = cd.proc_progress(cd.instance, x, g, fx, xnorm, gnorm, step, cd.n, k, ls)) {
+            if ((ret = cd.proc_progress(cd.instance, x, g, fx, xnorm, gnorm, step, cd.n, k, ls))) {
                 goto lbfgs_exit;
             }
         }
