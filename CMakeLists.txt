@@ -39,6 +39,14 @@ endif()
 
 find_library(M_LIB m)
 
+set (LIBTINYEST_HEADERS
+  tinyest/bitvector.h
+  tinyest/dataset.h
+  tinyest/lbfgs.h
+  tinyest/maxent.h
+  tinyest/model.h
+)
+
 set (LIBTINYEST_SOURCES
   src/bitvector.c
   src/dataset.c
@@ -49,6 +57,7 @@ set (LIBTINYEST_SOURCES
 
 add_library(tinyest SHARED
   ${LIBTINYEST_SOURCES}
+  ${LIBTINYEST_HEADERS}
 )
 
 target_link_libraries(tinyest ${ZLIB_LIBRARIES})
