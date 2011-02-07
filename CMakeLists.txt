@@ -7,7 +7,7 @@ if (NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
   set (CMAKE_BUILD_TYPE Release)
 endif (NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
 
-include_directories(${tinyest_SOURCE_DIR})
+include_directories(${tinyest_SOURCE_DIR}/include)
 
 set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -pedantic")
 
@@ -40,11 +40,11 @@ endif()
 find_library(M_LIB m)
 
 set (LIBTINYEST_HEADERS
-  tinyest/bitvector.h
-  tinyest/dataset.h
-  tinyest/lbfgs.h
-  tinyest/maxent.h
-  tinyest/model.h
+  include/tinyest/bitvector.h
+  include/tinyest/dataset.h
+  include/tinyest/lbfgs.h
+  include/tinyest/maxent.h
+  include/tinyest/model.h
 )
 
 set (LIBTINYEST_SOURCES
