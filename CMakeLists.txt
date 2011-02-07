@@ -62,11 +62,19 @@ add_library(tinyest SHARED
 
 target_link_libraries(tinyest ${ZLIB_LIBRARIES})
 
-add_executable(estimate
+add_executable(tinyest_executable
   util/estimate.c
 )
 
-target_link_libraries(estimate
+set_target_properties(tinyest_executable PROPERTIES OUTPUT_NAME "tinyest")
+
+target_link_libraries(tinyest_executable
   tinyest
   ${M_LIB}
+)
+
+install(FILES ${LIBTINYEST_HEADERS} DESTINATION include/tinyest)
+install(TARGETS tinyest_executable tinyest 
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
 )
