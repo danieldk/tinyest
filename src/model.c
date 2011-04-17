@@ -15,21 +15,29 @@
  */
 
 #include <math.h>
+#include <stdbool.h>
 #include <string.h>
 
 #include <tinyest/lbfgs.h>
 #include <tinyest/model.h>
 
-void model_new(model_t *model, size_t n_params)
+void model_new(model_t *model, size_t n_params, bool f_restrict)
 {
   model->params = lbfgs_malloc(n_params);
   model->n_params = n_params;
-  model->f_restrict = 0;
+
+  if (f_restrict)
+    model->f_restrict = bitvector_alloc(n_params);
+  else
+    model->f_restrict = NULL;
 }
 
 void model_free(model_t *model)
 {
   model->n_params = 0;
   lbfgs_free(model->params);
+
+  if (model->f_restrict != NULL)
+    bitvector_free(model->f_restrict);
 }
 

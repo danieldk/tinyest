@@ -17,6 +17,7 @@
 #ifndef ESTIMATE_MODEL_H
 #define ESTIMATE_MODEL_H
 
+#include <stdbool.h>
 #include <stddef.h>
 
 #include "bitvector.h"
@@ -30,9 +31,9 @@ typedef struct {
 
 /* Model */
 typedef struct {
-  size_t n_params;
-  lbfgsfloatval_t *params;
-  bitvector_t *f_restrict;
+  size_t n_params;         /* Number of parameters. */
+  lbfgsfloatval_t *params; /* Parameter vector. */
+  bitvector_t *f_restrict; /* Selected features, when used. */
 } model_t;
 
 typedef struct {
@@ -40,7 +41,7 @@ typedef struct {
   double **sums;
 } z_sum_t;
 
-void model_new(model_t *model, size_t n_params);
+void model_new(model_t *model, size_t n_params, bool f_restrict);
 void model_free(model_t *model);
 
 

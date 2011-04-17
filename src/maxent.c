@@ -223,7 +223,6 @@ int maxent_select_features(dataset_t *dataset, lbfgs_parameter_t *params,
 int maxent_lbfgs_grafting_light(dataset_t *dataset, model_t *model,
     lbfgs_parameter_t *params, double l2_sigma_sq, int grafting_n)
 {
-  model->f_restrict = bitvector_alloc(dataset->n_features);
   params->max_iterations = 1;
 
   lbfgsfloatval_t *g = lbfgs_malloc(dataset->n_features);
@@ -249,7 +248,6 @@ int maxent_lbfgs_grafting_light(dataset_t *dataset, model_t *model,
   }
 
   lbfgs_free(g);
-  bitvector_free(model->f_restrict);
 
   return r;
 }
@@ -257,8 +255,6 @@ int maxent_lbfgs_grafting_light(dataset_t *dataset, model_t *model,
 int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
     lbfgs_parameter_t *params, double l2_sigma_sq, int grafting_n)
 {
-  model->f_restrict = bitvector_alloc(dataset->n_features);
-
   lbfgsfloatval_t *g = lbfgs_malloc(dataset->n_features);
 
   maxent_lbfgs_data_t lbfgs_data = {l2_sigma_sq, dataset, model};
@@ -288,7 +284,6 @@ int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
   }
 
   lbfgs_free(g);
-  bitvector_free(model->f_restrict);
 
   return r;
 }

@@ -19,6 +19,7 @@
 #include <getopt.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -200,7 +201,10 @@ int main(int argc, char *argv[]) {
   }
 
   model_t model;
-  model_new(&model, ds.n_features);
+  if (grafting || grafting_light)
+    model_new(&model, ds.n_features, true);
+  else
+    model_new(&model, ds.n_features, false);
 
   fprintf(stderr, "Iter\t-LL\t\txnorm\t\tgnorm\n\n");
 
