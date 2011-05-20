@@ -27,6 +27,8 @@ and can be performed in two simple steps:
 
 Afterwards you will find the 'tinyest' library and 'estimate' utility.
 
+**Note:** Unfortunately, Visual Studio does not support C99.
+
 ## License
 
     Copyright 2010 Daniël de Kok
