@@ -25,6 +25,12 @@
 #include <tinyest/maxent.h>
 #include <tinyest/model.h>
 
+typedef struct {
+  double l2_sigma_sq;
+  dataset_t *dataset;
+  model_t *model;
+} maxent_lbfgs_data_t;
+
 void maxent_context_sums(dataset_context_t *ctx, lbfgsfloatval_t const *params,
     double *sums, double *z, bitvector_t *f_restrict)
 {
