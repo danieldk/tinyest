@@ -32,8 +32,11 @@ typedef struct {
 } maxent_lbfgs_data_t;
 
 void maxent_context_sums(dataset_context_t *ctx, lbfgsfloatval_t const *params,
-    double *sums, double *z, bitvector_t *f_restrict)
+    long double *sums, long double *z, bitvector_t *f_restrict)
 {
+  *z = 0.0;
+  memset(sums, 0, ctx->n_events * sizeof(long double));
+
   dataset_event_t *evts = ctx->events;
   for (int j = 0; j < ctx->n_events; ++j) {
     feature_value_t *fvals = evts[j].fvals;
@@ -41,9 +44,9 @@ void maxent_context_sums(dataset_context_t *ctx, lbfgsfloatval_t const *params,
       if (f_restrict == 0 || bitvector_get(f_restrict, fvals[k].feature))
         sums[j] += params[fvals[k].feature] * fvals[k].value;
 
-    sums[j] = exp(sums[j]);
+    sums[j] = expl(sums[j]);
     *z += sums[j];
-  }
+  }  
 }
 
 lbfgsfloatval_t maxent_lbfgs_evaluate(void *instance, lbfgsfloatval_t const *x,
@@ -70,16 +73,19 @@ lbfgsfloatval_t maxent_lbfgs_evaluate(void *instance, lbfgsfloatval_t const *x,
     if (ctxs[i].p == 0.0)
       continue;
 
-    double *sums = malloc(ctxs[i].n_events * sizeof(double));
-    memset(sums, 0, ctxs[i].n_events * sizeof(double));
-    double z = 0.0;
+    long double *sums = malloc(ctxs[i].n_events * sizeof(long double));
+    long double z = 0.0;
 
     maxent_context_sums(&ctxs[i], x, sums, &z, d->model->f_restrict);
 
+    // Cannot normalize over zero.
+    assert(z != 0.0);
+    
     dataset_event_t *evts = ctxs[i].events;
     for (int j = 0; j < ctxs[i].n_events; ++j) {
       // p(y|x)
       double p_yx = sums[j] / z;
+      //fprintf(stderr, "p(y|x): %Lf\n", z);
 
       // Update log-likelihood of the model.
       ctxLl += evts[j].p * log(p_yx);
@@ -146,9 +152,8 @@ void maxent_feature_gradients(dataset_t *dataset,
     if (ctxs[i].p == 0.0)
       continue;
 
-    double *sums = malloc(ctxs[i].n_events * sizeof(double));
-    memset(sums, 0, ctxs[i].n_events * sizeof(double));
-    double z = 0.0;
+    long double *sums = malloc(ctxs[i].n_events * sizeof(long double));
+    long double z;
 
     maxent_context_sums(&ctxs[i], params, sums, &z, 0);
 
