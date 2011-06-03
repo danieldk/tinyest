@@ -55,26 +55,17 @@ set (LIBTINYEST_SOURCES
   src/model.c
 )
 
-add_library(tinyest SHARED
+
+add_executable(tinyest
   ${LIBTINYEST_SOURCES}
   ${LIBTINYEST_HEADERS}
-)
-
-target_link_libraries(tinyest ${ZLIB_LIBRARIES})
-
-add_executable(tinyest_executable
   util/estimate.c
 )
 
-set_target_properties(tinyest_executable PROPERTIES OUTPUT_NAME "tinyest")
 
-target_link_libraries(tinyest_executable
-  tinyest
-  ${M_LIB}
-)
+target_link_libraries(tinyest ${M_LIB})
+target_link_libraries(tinyest ${ZLIB_LIBRARIES})
 
-install(FILES ${LIBTINYEST_HEADERS} DESTINATION include/tinyest)
-install(TARGETS tinyest_executable tinyest 
+install(TARGETS tinyest
   RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib
 )
