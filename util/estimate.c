@@ -39,6 +39,7 @@ static struct option longopts[] = {
   { "linesearch", required_argument, NULL, 7},
   { "minstep", required_argument, NULL, 8},
   { "maxstep", required_argument, NULL, 9},
+  { "polarities", required_argument, NULL, 10},
   { NULL, 0, NULL, 0 }
 };
 
@@ -54,7 +55,8 @@ void usage(char *program_name)
   fprintf(stderr, "--linesearch alg\tLine search algorithm: armijo, ");
   fprintf(stderr, "backtracking, wolfe, or\n\t\t\tstrong_wolfe\n");
   fprintf(stderr, "--minstep val\t\tMinimum step of the line search routine (default: 1e-20)\n");
-  fprintf(stderr, "--maxstep val\t\tMaximum step of the line search routine (default: 1e20)\n\n");
+  fprintf(stderr, "--maxstep val\t\tMaximum step of the line search routine (default: 1e20)\n");
+  fprintf(stderr, "--polarity filename\tUse a polarity file\n\n");
 }
 
 double str_to_double(char *str)
@@ -95,11 +97,49 @@ int str_to_int(char *str)
   return r;
 }
 
+int read_polarities(char *fn, int n_params, bitvector_t **pos, bitvector_t **neg)
+{
+  char line[65535];
+
+  FILE *p_file;
+  if ((p_file = fopen(fn, "r")) == NULL) {
+    fprintf(stderr, "Could not open polarities file: %s\n", fn);
+    return 1;
+  }
+
+  *pos = bitvector_alloc(n_params);
+  *neg = bitvector_alloc(n_params);
+
+  fprintf(stderr, "Polarities: ");
+
+  while (fgets(line, sizeof(line), p_file) != NULL) {
+    char *cur = line;
+
+    if ((cur = strtok(cur, " ")) == NULL)
+      exit(1);
+
+    int f = str_to_int(cur);
+
+    if ((cur = strtok(NULL, " ")) == NULL)
+      exit(1);
+
+    fprintf(stderr, " %d (%c)", f, *cur);
+
+    if (*cur == '+')
+      bitvector_set(*pos, f, 1);
+    else if (*cur == '-')
+      bitvector_set(*neg, f, 1);
+  }
+
+  fprintf(stderr, "\n\n");
+}
+
 int main(int argc, char *argv[]) {
   char *program_name = argv[0];
   double l2_sigma_sq = 0.0;
   int grafting = 0;
   int grafting_light = 0;
+  char *polarities_file = NULL;
 
   lbfgs_parameter_t params;
   lbfgs_parameter_init(&params);
@@ -147,6 +187,9 @@ int main(int argc, char *argv[]) {
       break;
     case 9:
       params.max_step = str_to_double(optarg);
+      break;
+    case 10:
+      polarities_file = strdup(optarg);
       break;
     case '?':
     default:
@@ -205,6 +248,10 @@ int main(int argc, char *argv[]) {
     model_new(&model, ds.n_features, true);
   else
     model_new(&model, ds.n_features, false);
+
+  if (polarities_file != NULL)
+    read_polarities(polarities_file, ds.n_features, &model.f_pos_pol,
+      &model.f_neg_pol);
 
   fprintf(stderr, "Iter\t-LL\t\txnorm\t\tgnorm\n\n");
 

@@ -25,6 +25,8 @@ void model_new(model_t *model, size_t n_params, bool f_restrict)
 {
   model->params = lbfgs_malloc(n_params);
   model->n_params = n_params;
+  model->f_pos_pol = NULL;
+  model->f_neg_pol = NULL;
 
   if (f_restrict)
     model->f_restrict = bitvector_alloc(n_params);

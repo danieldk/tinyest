@@ -34,6 +34,8 @@ typedef struct {
   size_t n_params;         /* Number of parameters. */
   lbfgsfloatval_t *params; /* Parameter vector. */
   bitvector_t *f_restrict; /* Selected features, when used. */
+  bitvector_t *f_neg_pol;  /* Features with required negative polarity. */
+  bitvector_t *f_pos_pol;  /* Features with required positive polarity. */
 } model_t;
 
 typedef struct {

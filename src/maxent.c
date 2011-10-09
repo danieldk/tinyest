@@ -52,7 +52,7 @@ void maxent_context_sums(dataset_context_t *ctx, lbfgsfloatval_t const *params,
 lbfgsfloatval_t maxent_lbfgs_evaluate(void *instance, lbfgsfloatval_t const *x,
     lbfgsfloatval_t *g, int const n, lbfgsfloatval_t const step)
 {
-  maxent_lbfgs_data_t *d= (maxent_lbfgs_data_t *) instance;
+  maxent_lbfgs_data_t *d = (maxent_lbfgs_data_t *) instance;
   dataset_t *ds = d->dataset;
   double *fvals = ds->feature_values;
 
@@ -104,6 +104,17 @@ lbfgsfloatval_t maxent_lbfgs_evaluate(void *instance, lbfgsfloatval_t const *x,
 
     free(sums);
   }
+
+  /* Polarity checks. */
+  if (d->model->f_neg_pol != NULL && d->model->f_pos_pol != NULL)
+    for (int i = 0; i < d->dataset->n_features; ++i) {
+      if (x[i] == 0.0 && bitvector_get(d->model->f_neg_pol, i) &&
+          g[i] < 0.0)
+        g[i] = 0.0;
+      else if (x[i] == 0.0 && bitvector_get(d->model->f_pos_pol, i) &&
+          g[i] > 0.0)
+        g[i] = 0.0;
+    }
 
   if (d->l2_sigma_sq != 0.0) {
     double sigma = 1.0 / d->l2_sigma_sq;
