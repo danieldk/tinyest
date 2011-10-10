@@ -9,7 +9,7 @@ endif (NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
 
 include_directories(${tinyest_SOURCE_DIR}/include)
 
-set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -pedantic")
+set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -pedantic -D_XOPEN_SOURCE=600")
 
 find_package(ZLIB REQUIRED)
 if(ZLIB_FOUND)
