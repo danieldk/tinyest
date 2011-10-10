@@ -132,6 +132,8 @@ int read_polarities(char *fn, int n_params, bitvector_t **pos, bitvector_t **neg
   }
 
   fprintf(stderr, "\n\n");
+
+  return 0;
 }
 
 int main(int argc, char *argv[]) {
@@ -203,16 +205,22 @@ int main(int argc, char *argv[]) {
 
   if (argc != 0 && argc != 1) {
     usage(program_name);
+    if (polarities_file != NULL)
+      free(polarities_file);
     return 1;
   }
 
   if (grafting && grafting_light) {
     fprintf(stderr, "Grafting and grafting-light cannot be used simultaneously...");
+    if (polarities_file != NULL)
+      free(polarities_file);
     return 1;
   }
 
   if ((grafting || grafting_light) && params.orthantwise_c == 0.) {
     fprintf(stderr, "Grafting requires a l1 norm coefficient...");
+    if (polarities_file != NULL)
+      free(polarities_file);
     return 1;
   }
 
@@ -224,6 +232,8 @@ int main(int argc, char *argv[]) {
   int fd = 0;
   if (argc == 1 && (fd = open(argv[0], O_RDONLY)) == -1) {
     fprintf(stderr, "Could not open %s\n", argv[0]);
+    if (polarities_file != NULL)
+      free(polarities_file);
     return 1;
   }
 
@@ -231,6 +241,8 @@ int main(int argc, char *argv[]) {
 
   if (r != TADM_OK) {
     fprintf(stderr, "Error reading data...\n");
+    if (polarities_file != NULL)
+      free(polarities_file);
     return 1;
   }
   
@@ -249,9 +261,17 @@ int main(int argc, char *argv[]) {
   else
     model_new(&model, ds.n_features, false);
 
-  if (polarities_file != NULL)
-    read_polarities(polarities_file, ds.n_features, &model.f_pos_pol,
+  if (polarities_file != NULL) {
+    int r = read_polarities(polarities_file, ds.n_features, &model.f_pos_pol,
       &model.f_neg_pol);
+    free(polarities_file);
+
+    if (r != 0) {
+      dataset_free(&ds);
+      model_free(&model);
+      return 1;
+    }
+  }
 
   fprintf(stderr, "Iter\t-LL\t\txnorm\t\tgnorm\n\n");
 
