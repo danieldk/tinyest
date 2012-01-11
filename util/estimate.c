@@ -39,6 +39,7 @@ static struct option longopts[] = {
   { "linesearch", required_argument, NULL, 7},
   { "minstep", required_argument, NULL, 8},
   { "maxstep", required_argument, NULL, 9},
+  { "norm", required_argument, NULL, 10},
   { NULL, 0, NULL, 0 }
 };
 
@@ -54,7 +55,9 @@ void usage(char *program_name)
   fprintf(stderr, "--linesearch alg\tLine search algorithm: armijo, ");
   fprintf(stderr, "backtracking, wolfe, or\n\t\t\tstrong_wolfe\n");
   fprintf(stderr, "--minstep val\t\tMinimum step of the line search routine (default: 1e-20)\n");
-  fprintf(stderr, "--maxstep val\t\tMaximum step of the line search routine (default: 1e20)\n\n");
+  fprintf(stderr, "--maxstep val\t\tMaximum step of the line search routine (default: 1e20)\n");
+  fprintf(stderr, "--norm method\t\tDataset normalization: weighted_ctxs or ");
+  fprintf(stderr, "uniform_ctxs\n\t\t\t(default: weighted_ctxs)\n\n");
 }
 
 double str_to_double(char *str)
@@ -100,6 +103,7 @@ int main(int argc, char *argv[]) {
   double l2_sigma_sq = 0.0;
   int grafting = 0;
   int grafting_light = 0;
+  int normalization = 0;
 
   lbfgs_parameter_t params;
   lbfgs_parameter_init(&params);
@@ -148,6 +152,16 @@ int main(int argc, char *argv[]) {
     case 9:
       params.max_step = str_to_double(optarg);
       break;
+    case 10:
+      if (strcmp(optarg, "weighted_ctxs") == 0)
+        normalization = DATASET_NORMALIZE_WEIGHTED_CONTEXTS;
+      else if (strcmp(optarg, "uniform_ctxs") == 0)
+        normalization = DATASET_NORMALIZE_UNIFORM_CONTEXTS;
+      else {
+        usage(program_name);
+        return 1;
+      }
+      break;
     case '?':
     default:
       usage(program_name);
@@ -184,7 +198,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  int r = read_tadm_dataset(fd, &ds);
+  int r = read_tadm_dataset(fd, &ds, normalization);
 
   if (r != TADM_OK) {
     fprintf(stderr, "Error reading data...\n");

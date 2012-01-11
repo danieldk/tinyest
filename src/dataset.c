@@ -88,6 +88,26 @@ void dataset_normalize(dataset_t *dataset)
   }
 }
 
+void dataset_normalize_uniform_contexts(dataset_t *dataset)
+{
+  dataset_context_t *ctxs = dataset->contexts;
+  size_t n_contexts = dataset->n_contexts;
+
+  for (int i = 0; i < n_contexts; ++i) {
+    ctxs[i].p = 1.0 / (double) n_contexts;
+
+    dataset_event_t *evts = ctxs[i].events;
+    double scoreSum = 0.0;
+
+    for (int j = 0; j < ctxs[i].n_events; ++j)
+      scoreSum += evts[j].p;
+
+    for (int j = 0; j < ctxs[i].n_events; ++j)
+      evts[j].p = (evts[j].p / scoreSum) / (double) n_contexts;
+
+  }
+}
+
 void dataset_free(dataset_t *dataset)
 {
   for (int i = 0; i < dataset->n_contexts; ++i)
@@ -126,7 +146,7 @@ void dataset_event_free(dataset_event_t *event)
   }
 }
 
-int read_tadm_dataset(int fd, dataset_t *dataset)
+int read_tadm_dataset(int fd, dataset_t *dataset, int norm)
 {
   gzFile f;
   if ((f = gzdopen(fd, "rb")) == NULL)
@@ -157,7 +177,18 @@ int read_tadm_dataset(int fd, dataset_t *dataset)
 
   gzclose(f);
 
-  dataset_normalize(dataset);
+  switch (norm) {
+    case DATASET_NORMALIZE_WEIGHTED_CONTEXTS:
+      dataset_normalize(dataset);
+      break;
+    case DATASET_NORMALIZE_UNIFORM_CONTEXTS:
+      dataset_normalize_uniform_contexts(dataset);
+      break;
+    default:
+      fprintf(stderr, "Unknown normalization method, using weighted contexts\n");
+      dataset_normalize(dataset);
+  }
+
   dataset->n_features = dataset_count_features(dataset);
   dataset->feature_values = dataset_feature_values(dataset);
 
