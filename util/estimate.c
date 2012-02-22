@@ -42,6 +42,57 @@ static struct option longopts[] = {
   { NULL, 0, NULL, 0 }
 };
 
+typedef struct {
+  int err;
+  char *msg;
+} error_message_t;
+
+static error_message_t lbfgs_errs[] = {
+  { LBFGSERR_UNKNOWNERROR, "Unknown error." },
+  { LBFGSERR_LOGICERROR, "Logic error." },
+  { LBFGSERR_OUTOFMEMORY, "Insufficient memory." },
+  { LBFGSERR_CANCELED, "Invalid number of variables specified." },
+  { LBFGSERR_INVALID_N, "Invalid number of variables specified." },
+  { LBFGSERR_INVALID_N_SSE, "Invalid number of variables (for SSE) specified." },
+  { LBFGSERR_INVALID_X_SSE, "The array x must be aligned to 16 (for SSE)." },
+  { LBFGSERR_INVALID_EPSILON, "Invalid parameter lbfgs_parameter_t::epsilon specified." },
+  { LBFGSERR_INVALID_TESTPERIOD, "Invalid parameter lbfgs_parameter_t::past specified." },
+  { LBFGSERR_INVALID_DELTA, "Invalid parameter lbfgs_parameter_t::delta specified." },
+  { LBFGSERR_INVALID_LINESEARCH, "Invalid parameter lbfgs_parameter_t::linesearch specified." },
+  { LBFGSERR_INVALID_MINSTEP, "Invalid parameter lbfgs_parameter_t::min_step specified." },
+  { LBFGSERR_INVALID_MAXSTEP, "Invalid parameter lbfgs_parameter_t::max_step specified." },
+  { LBFGSERR_INVALID_FTOL, "Invalid parameter lbfgs_parameter_t::ftol specified." },
+  { LBFGSERR_INVALID_WOLFE, "Invalid parameter lbfgs_parameter_t::wolfe specified." },
+  { LBFGSERR_INVALID_GTOL, "Invalid parameter lbfgs_parameter_t::gtol specified." },
+  { LBFGSERR_INVALID_XTOL, "Invalid parameter lbfgs_parameter_t::xtol specified." },
+  { LBFGSERR_INVALID_MAXLINESEARCH," Invalid parameter lbfgs_parameter_t::max_linesearch specified." },
+  { LBFGSERR_INVALID_ORTHANTWISE, "Invalid parameter lbfgs_parameter_t::orthantwise_c specified." },
+  { LBFGSERR_INVALID_ORTHANTWISE_START, "Invalid parameter lbfgs_parameter_t::orthantwise_start specified." },
+  { LBFGSERR_INVALID_ORTHANTWISE_END, "Invalid parameter lbfgs_parameter_t::orthantwise_end specified." },
+  { LBFGSERR_OUTOFINTERVAL, "The line-search step went out of the interval of uncertainty." },
+  { LBFGSERR_INCORRECT_TMINMAX, "A logic error occurred; alternatively, the interval of uncertainty became too small." },
+  { LBFGSERR_ROUNDING_ERROR, "A rounding error occurred; alternatively, no line-search step satisfies the sufficient decrease and curvature conditions." },
+  { LBFGSERR_MINIMUMSTEP, "The line-search step became smaller than lbfgs_parameter_t::min_step." },
+  { LBFGSERR_MAXIMUMSTEP, "The line-search step became larger than lbfgs_parameter_t::max_step." },
+  { LBFGSERR_MAXIMUMLINESEARCH, "The line-search routine reaches the maximum number of evaluations." },
+  { LBFGSERR_MAXIMUMITERATION, "The algorithm routine reaches the maximum number of iterations." },
+  { LBFGSERR_WIDTHTOOSMALL, "Relative width of the interval of uncertainty is at most lbfgs_parameter_t::xtol." },
+  { LBFGSERR_INVALIDPARAMETERS, "A logic error (negative line-search step) occurred."},
+  { LBFGSERR_INCREASEGRADIENT, "The current search direction increases the objective function value." },
+  { 0, NULL }
+};
+
+char *err_to_string(error_message_t *errs, int err) {
+  while (errs->msg != NULL) {
+    if (errs->err == err)
+      return errs->msg;
+
+    ++errs;
+  }
+
+  return "Unknown error.";
+}
+
 void usage(char *program_name)
 {
   fprintf(stderr, "Usage: %s [OPTION] dataset\n\n", program_name);
@@ -219,7 +270,7 @@ int main(int argc, char *argv[]) {
   dataset_free(&ds);
 
   if (r != LBFGS_STOP && r != LBFGS_SUCCESS && r != LBFGS_ALREADY_MINIMIZED) {
-    fprintf(stderr, "lbfgs result: %d\n", r);
+    fprintf(stderr, "%s\n\n", err_to_string(lbfgs_errs, r));
     model_free(&model);
     return 1;
   }
