@@ -216,7 +216,7 @@ int maxent_select_features(dataset_t *dataset, lbfgs_parameter_t *params,
     for (int i = 0; i < n_unselected && cur_select < n_select; ++i) {
       feature_score_t *score = scores[i];
       if (fabs(score->score) <= params->orthantwise_c)
-        continue;
+        break;
 
       fprintf(stderr, "* %d\n", score->feature);
       bitvector_set(model->f_restrict, score->feature, 1);
