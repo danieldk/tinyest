@@ -160,8 +160,8 @@ int read_tadm_dataset(int fd, dataset_t *dataset)
       perror("malloc() error in read_tadm_dataset()");
       exit(1);
     }
-    memcpy(&dataset->contexts[dataset->n_contexts - 1], &ctx,
-      sizeof(dataset_context_t));
+
+    dataset->contexts[dataset->n_contexts - 1] = ctx;
   }
 
   gzclose(f);
