@@ -73,7 +73,11 @@ lbfgsfloatval_t maxent_lbfgs_evaluate(void *instance, lbfgsfloatval_t const *x,
     if (ctxs[i].p == 0.0)
       continue;
 
-    long double *sums = malloc(ctxs[i].n_events * sizeof(long double));
+    long double *sums;
+    if ((sums = malloc(ctxs[i].n_events * sizeof(long double))) == NULL) {
+      perror("malloc() error in maxent_lbfgs_evaluate()");
+      exit(1);
+    }
     long double z = 0.0;
 
     maxent_context_sums(&ctxs[i], x, sums, &z, d->model->f_restrict);
@@ -152,7 +156,11 @@ void maxent_feature_gradients(dataset_t *dataset,
     if (ctxs[i].p == 0.0)
       continue;
 
-    long double *sums = malloc(ctxs[i].n_events * sizeof(long double));
+    long double *sums;
+    if ((sums = malloc(ctxs[i].n_events * sizeof(long double))) == NULL) {
+      perror("malloc() error in maxent_feature_gradients()");
+      exit(1);
+    }
     long double z;
 
     maxent_context_sums(&ctxs[i], params, sums, &z, 0);
@@ -192,8 +200,11 @@ int maxent_select_features(dataset_t *dataset, lbfgs_parameter_t *params,
 {
   int n_unselected = dataset->n_features - model->f_restrict->on;
 
-  feature_score_t *scores =
-    (feature_score_t *) malloc(sizeof(feature_score_t) * n_unselected);
+  feature_score_t *scores;
+  if ((scores = malloc(sizeof(feature_score_t) * n_unselected)) == NULL) {
+      perror("malloc() error in maxent_select_features()");
+      exit(1);
+  }
   //memset(scores, 0, sizeof(feature_score_t *) * n_unselected);
 
   int i;
@@ -232,7 +243,11 @@ int maxent_lbfgs_grafting_light(dataset_t *dataset, model_t *model,
 {
   params->max_iterations = 1;
 
-  lbfgsfloatval_t *g = lbfgs_malloc(dataset->n_features);
+  lbfgsfloatval_t *g;
+  if ((g = lbfgs_malloc(dataset->n_features)) == NULL) {
+    perror("malloc() error in maxent_lbfgs_grafting_light()");
+    exit(1);
+  }
 
   maxent_lbfgs_data_t lbfgs_data = {l2_sigma_sq, dataset, model};
 
@@ -262,7 +277,11 @@ int maxent_lbfgs_grafting_light(dataset_t *dataset, model_t *model,
 int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
     lbfgs_parameter_t *params, double l2_sigma_sq, int grafting_n)
 {
-  lbfgsfloatval_t *g = lbfgs_malloc(dataset->n_features);
+  lbfgsfloatval_t *g;
+  if ((g = lbfgs_malloc(dataset->n_features)) == NULL) {
+    perror("malloc() error in maxent_lbfgs_grafting()");
+    exit(1);
+  }
 
   maxent_lbfgs_data_t lbfgs_data = {l2_sigma_sq, dataset, model};
 

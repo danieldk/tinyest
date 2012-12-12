@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <zlib.h>
@@ -45,7 +46,12 @@ size_t dataset_count_features(dataset_t *dataset)
 
 double *dataset_feature_values(dataset_t *dataset)
 {
-  double *fv = malloc(dataset->n_features * sizeof(double));
+  double *fv;
+  if ((fv = malloc(dataset->n_features * sizeof(double))) == NULL) {
+    perror("malloc() error in dataset_feature_values()");
+    exit(1);
+  }
+
   memset(fv, 0, dataset->n_features * sizeof(double));
 
   dataset_context_t *ctxs = dataset->contexts;
@@ -149,8 +155,11 @@ int read_tadm_dataset(int fd, dataset_t *dataset)
     }
 
     ++dataset->n_contexts;
-    dataset->contexts = realloc(dataset->contexts,
-      dataset->n_contexts * sizeof(dataset_context_t));
+    if ((dataset->contexts = realloc(dataset->contexts,
+        dataset->n_contexts * sizeof(dataset_context_t))) == NULL) {
+      perror("malloc() error in read_tadm_dataset()");
+      exit(1);
+    }
     memcpy(&dataset->contexts[dataset->n_contexts - 1], &ctx,
       sizeof(dataset_context_t));
   }
@@ -178,7 +187,10 @@ int read_tadm_context(gzFile f, dataset_context_t *ctx)
   int n_events = atoi(line);
 
   /* Allocate memory for context events. */
-  ctx->events = malloc(n_events * sizeof(dataset_event_t));
+  if ((ctx->events = malloc(n_events * sizeof(dataset_event_t))) == NULL) {
+    perror("malloc() error in read_tadm_context()");
+    exit(1);
+  }
 
   for (int i = 0; i < n_events; ++i) {
     int r = read_tadm_event(f, &ctx->events[i]);
@@ -213,7 +225,10 @@ int read_tadm_event(gzFile f, dataset_event_t *evt)
   if ((cur = strtok(NULL, " ")) == NULL)
     return TADM_ERROR_MALFORMED_EVENT;
   evt->n_fvals = atoi(cur);
-  evt->fvals = malloc(evt->n_fvals * sizeof(feature_value_t));
+  if ((evt->fvals = malloc(evt->n_fvals * sizeof(feature_value_t))) == NULL) {
+    perror("malloc() error in read_tadm_event()");
+    exit(1);
+  }
 
   /* Read features. */
   for (int i = 0; i < evt->n_fvals; ++i) {

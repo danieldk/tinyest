@@ -1,13 +1,22 @@
 #include <assert.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #include <tinyest/bitvector.h>
 
 bitvector_t *bitvector_alloc(size_t n)
 {
-  bitvector_t *bv = (bitvector_t *) malloc(sizeof(bitvector_t));
-  bv->vector = (char *) malloc(sizeof(char) * n);
+  bitvector_t *bv;
+  if ((bv = malloc(sizeof(bitvector_t))) == NULL) {
+    perror("malloc() error in bitvector_alloc()");
+    exit(1);
+  }
+
+  if ((bv->vector = (char *) malloc(sizeof(char) * n)) == NULL) {
+    perror("malloc() error in bitvector_alloc()");
+    exit(1);
+  }
   memset(bv->vector, 0, sizeof(char) * n);
   bv->n = n;
   bv->on = 0;
