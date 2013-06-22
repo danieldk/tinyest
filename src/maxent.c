@@ -64,49 +64,58 @@ lbfgsfloatval_t maxent_lbfgs_evaluate(void *instance, lbfgsfloatval_t const *x,
   lbfgsfloatval_t ll = 0.0;
 
   dataset_context_t *ctxs = ds->contexts;
-  for (int i = 0; i < ds->n_contexts; ++i) 
+
+  #pragma omp parallel reduction (+:ll)
   {
-    lbfgsfloatval_t ctxLl = 0.0;
+    lbfgsfloatval_t *gL = lbfgs_malloc(n);
+    memset(gL, 0, n * sizeof(lbfgsfloatval_t));
 
-    // Skip contexts that have a probability of zero. If we allow such
-    // contexts, we can not calculate emperical p(y|x).
-    if (ctxs[i].p == 0.0)
-      continue;
+    #pragma omp for
+    for (int i = 0; i < ds->n_contexts; ++i) 
+    {
 
-    long double *sums;
-    if ((sums = malloc(ctxs[i].n_events * sizeof(long double))) == NULL) {
-      perror("malloc() error in maxent_lbfgs_evaluate()");
-      exit(1);
+      // Skip contexts that have a probability of zero. If we allow such
+      // contexts, we can not calculate emperical p(y|x).
+      if (ctxs[i].p == 0.0)
+        continue;
+
+      long double *sums;
+      if ((sums = malloc(ctxs[i].n_events * sizeof(long double))) == NULL) {
+        perror("malloc() error in maxent_lbfgs_evaluate()");
+        exit(1);
+      }
+      long double z = 0.0;
+
+      maxent_context_sums(&ctxs[i], x, sums, &z, d->model->f_restrict);
+
+      // Cannot normalize over zero.
+      assert(z != 0.0);
+      
+      dataset_event_t *evts = ctxs[i].events;
+      for (int j = 0; j < ctxs[i].n_events; ++j) {
+        // p(y|x)
+        double p_yx = sums[j] / z;
+
+        // Update log-likelihood of the model.
+        ll += evts[j].p * log(p_yx);
+
+        // Contribution of this context to p(f).
+        feature_value_t *fvals = evts[j].fvals;
+        for (int k = 0; k < evts[j].n_fvals; ++k)
+          if (d->model->f_restrict == 0 ||
+              bitvector_get(d->model->f_restrict, fvals[k].feature)) {
+            gL[fvals[k].feature] += ctxs[i].p * p_yx * fvals[k].value;
+          }
+      }
+
+      free(sums);
     }
-    long double z = 0.0;
 
-    maxent_context_sums(&ctxs[i], x, sums, &z, d->model->f_restrict);
+    #pragma omp critical
+    for (int f = 0; f < n; ++f)
+      g[f] += gL[f];
 
-    // Cannot normalize over zero.
-    assert(z != 0.0);
-    
-    dataset_event_t *evts = ctxs[i].events;
-    for (int j = 0; j < ctxs[i].n_events; ++j) {
-      // p(y|x)
-      double p_yx = sums[j] / z;
-      //fprintf(stderr, "p(y|x): %Lf\n", z);
-
-      // Update log-likelihood of the model.
-      ctxLl += evts[j].p * log(p_yx);
-
-      // Contribution of this context to p(f).
-      feature_value_t *fvals = evts[j].fvals;
-      for (int k = 0; k < evts[j].n_fvals; ++k)
-        if (d->model->f_restrict == 0 ||
-            bitvector_get(d->model->f_restrict, fvals[k].feature)) {
-          g[fvals[k].feature] += ctxs[i].p * p_yx * fvals[k].value;
-        }
-    }
-
-    #pragma omp atomic
-    ll += ctxLl;
-
-    free(sums);
+    lbfgs_free(gL);
   }
 
   if (d->l2_sigma_sq != 0.0) {
