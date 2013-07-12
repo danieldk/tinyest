@@ -24,10 +24,14 @@ if(ENABLE_SSE2)
 endif()
 
 # OpenMP
-#find_package(OpenMP)
-#if(OPENMP_FOUND)
-#  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-#endif()
+option(USE_OPENMP "Enable OpenMP support" OFF)
+
+if (USE_OPENMP)
+  find_package(OpenMP REQUIRED)
+  if(OPENMP_FOUND)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+  endif()
+endif()
 
 if (CMAKE_TINYEST_HAS_SSE)
   CHECK_INCLUDE_FILE("emmintrin.h" HAVE_EMMINTRIN_H)
