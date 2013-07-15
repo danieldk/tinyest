@@ -28,17 +28,22 @@
 #include <tinyest/maxent.h>
 #include <tinyest/model.h>
 
+enum OPTIONS { OPTION_FTOL = 1, OPTION_GTOL, OPTION_GRAFTING,
+  OPTION_GRAFTING_LIGHT, OPTION_L1, OPTION_L2, OPTION_LINESEARCH,
+  OPTION_MINSTEP, OPTION_MAXSTEP };
+
+
 // Options
 static struct option longopts[] = {
-  { "ftol", required_argument, NULL, 1},
-  { "gtol", required_argument, NULL, 2},
-  { "grafting", required_argument, NULL, 3},
-  { "grafting-light", required_argument, NULL, 4},
-  { "l1", required_argument, NULL, 5},
-  { "l2", required_argument, NULL, 6},
-  { "linesearch", required_argument, NULL, 7},
-  { "minstep", required_argument, NULL, 8},
-  { "maxstep", required_argument, NULL, 9},
+  { "ftol", required_argument, NULL, OPTION_FTOL},
+  { "gtol", required_argument, NULL, OPTION_GTOL},
+  { "grafting", required_argument, NULL, OPTION_GRAFTING},
+  { "grafting-light", required_argument, NULL, OPTION_GRAFTING_LIGHT},
+  { "l1", required_argument, NULL, OPTION_L1},
+  { "l2", required_argument, NULL, OPTION_L2},
+  { "linesearch", required_argument, NULL, OPTION_LINESEARCH},
+  { "minstep", required_argument, NULL, OPTION_MINSTEP},
+  { "maxstep", required_argument, NULL, OPTION_MAXSTEP},
   { NULL, 0, NULL, 0 }
 };
 
@@ -160,25 +165,25 @@ int main(int argc, char *argv[]) {
   int ch;
   while ((ch = getopt_long(argc, argv, "", longopts, NULL)) != -1) {
     switch (ch) {
-    case 1:
+    case OPTION_FTOL:
       params.ftol = str_to_double(optarg);
       break;
-    case 2:
+    case OPTION_GTOL:
       params.gtol = str_to_double(optarg);
       break;
-    case 3:
+    case OPTION_GRAFTING:
       grafting = str_to_int(optarg);
       break;
-    case 4:
+    case OPTION_GRAFTING_LIGHT:
       grafting_light = str_to_int(optarg);
       break;
-    case 5:
+    case OPTION_L1:
       params.orthantwise_c = str_to_double(optarg);
       break;
-    case 6:
+    case OPTION_L2:
       l2_sigma_sq = str_to_double(optarg);
       break;
-    case 7:
+    case OPTION_LINESEARCH:
       if (strcmp(optarg, "armijo") == 0)
         params.linesearch = LBFGS_LINESEARCH_BACKTRACKING_ARMIJO;
       else if (strcmp(optarg, "backtracking") == 0)
@@ -192,11 +197,11 @@ int main(int argc, char *argv[]) {
         return 1;
       }
       break;
-    case 8:
+    case OPTION_MINSTEP:
       fprintf(stderr,"backtracking\n");
       params.min_step = str_to_double(optarg);
       break;
-    case 9:
+    case OPTION_MAXSTEP:
       params.max_step = str_to_double(optarg);
       break;
     case '?':
