@@ -31,7 +31,7 @@ Afterwards you will find the 'tinyest' library and 'estimate' utility.
 
 ## License
 
-    Copyright 2010 Daniël de Kok
+    Copyright 2010-2013 Daniël de Kok
     
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
