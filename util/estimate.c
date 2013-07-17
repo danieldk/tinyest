@@ -30,7 +30,7 @@
 
 enum OPTIONS { OPTION_FTOL = 1, OPTION_GTOL, OPTION_GRAFTING,
   OPTION_GRAFTING_LIGHT, OPTION_L1, OPTION_L2, OPTION_LINESEARCH,
-  OPTION_MINSTEP, OPTION_MAXSTEP };
+  OPTION_MINSTEP, OPTION_MAXSTEP, OPTION_WEIGHTS };
 
 
 // Options
@@ -44,6 +44,7 @@ static struct option longopts[] = {
   { "linesearch", required_argument, NULL, OPTION_LINESEARCH},
   { "minstep", required_argument, NULL, OPTION_MINSTEP},
   { "maxstep", required_argument, NULL, OPTION_MAXSTEP},
+  { "weights", required_argument, NULL, OPTION_WEIGHTS},
   { NULL, 0, NULL, 0 }
 };
 
@@ -156,6 +157,7 @@ int main(int argc, char *argv[]) {
   double l2_sigma_sq = 0.0;
   int grafting = 0;
   int grafting_light = 0;
+  char *weights_file = NULL;
 
   lbfgs_parameter_t params;
   lbfgs_parameter_init(&params);
@@ -204,6 +206,9 @@ int main(int argc, char *argv[]) {
     case OPTION_MAXSTEP:
       params.max_step = str_to_double(optarg);
       break;
+    case OPTION_WEIGHTS:
+      weights_file = strdup(optarg);
+      break;
     case '?':
     default:
       usage(program_name);
@@ -232,6 +237,9 @@ int main(int argc, char *argv[]) {
   fprintf(stderr, "l1 norm coefficient: %.4e\n", params.orthantwise_c); 
   fprintf(stderr, "l2 prior sigma^2: %.4e\n\n", l2_sigma_sq);
 
+  if (weights_file != NULL)
+    fprintf(stderr, "Using initial weights: %s\n\n", weights_file);
+
   dataset_t ds;
   
   int fd = 0;
@@ -256,34 +264,53 @@ int main(int argc, char *argv[]) {
     params.linesearch = LBFGS_LINESEARCH_BACKTRACKING;
   }
 
-  model_t model;
-  if (grafting || grafting_light)
-    model_new(&model, ds.n_features, true);
-  else
-    model_new(&model, ds.n_features, false);
+  model_t *model;
+  if (weights_file == NULL) {
+    if (grafting || grafting_light)
+      model = model_new(ds.n_features, true);
+    else
+      model = model_new(ds.n_features, false);
+  } else {
+    FILE *f = fopen(weights_file, "r");
+    if (f == NULL)
+    {
+      fprintf(stderr, "Error reading initial weights...\n");
+      free(weights_file);
+      dataset_free(&ds);
+      return 1;
+    }
+
+    if (grafting || grafting_light)
+      model = model_read(f, true);
+    else
+      model = model_read(f, false);
+
+    fclose(f);
+  }
 
   fprintf(stderr, "Iter\t-LL\t\txnorm\t\tgnorm\n\n");
 
   if (grafting)
-    r = maxent_lbfgs_grafting(&ds, &model, &params, l2_sigma_sq, grafting);
+    r = maxent_lbfgs_grafting(&ds, model, &params, l2_sigma_sq, grafting);
   else if (grafting_light)
-    r = maxent_lbfgs_grafting_light(&ds, &model, &params, l2_sigma_sq,
+    r = maxent_lbfgs_grafting_light(&ds, model, &params, l2_sigma_sq,
         grafting_light);
   else
-    r = maxent_lbfgs_optimize(&ds, &model, &params, l2_sigma_sq);
+    r = maxent_lbfgs_optimize(&ds, model, &params, l2_sigma_sq);
 
+  free(weights_file);
   dataset_free(&ds);
 
   if (r != LBFGS_STOP && r != LBFGS_SUCCESS && r != LBFGS_ALREADY_MINIMIZED) {
     fprintf(stderr, "%s\n\n", err_to_string(lbfgs_errs, r));
-    model_free(&model);
+    model_free(model);
     return 1;
   }
 
   for (int i = 0; i < ds.n_features; ++i)
-    printf("%.8f\n", model.params[i]);
+    printf("%.8f\n", model->params[i]);
 
-  model_free(&model);
+  model_free(model);
 
   return 0;
 }

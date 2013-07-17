@@ -19,6 +19,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
 
 #include "bitvector.h"
 #include "lbfgs.h"
@@ -41,8 +42,8 @@ typedef struct {
   double **sums;
 } z_sum_t;
 
-void model_new(model_t *model, size_t n_params, bool f_restrict);
+model_t *model_new(size_t n_params, bool f_restrict);
 void model_free(model_t *model);
-
+model_t *model_read(FILE *f, bool f_restrict);
 
 #endif // ESTIMATE_MODEL_H
