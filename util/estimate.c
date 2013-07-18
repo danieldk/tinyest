@@ -296,7 +296,10 @@ int main(int argc, char *argv[]) {
   else if (grafting_light)
     r = maxent_lbfgs_grafting(&ds, model, &params, l2_sigma_sq, true,
         grafting_light);
-  else
+
+  // We require a full gradient decent during normal training and in
+  // grafting-light, to get good end-weights.
+  if (!grafting)
     r = maxent_lbfgs_optimize(&ds, model, &params, l2_sigma_sq);
 
   free(weights_file);
