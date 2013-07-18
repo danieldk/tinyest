@@ -291,9 +291,10 @@ int main(int argc, char *argv[]) {
   fprintf(stderr, "Iter\t-LL\t\txnorm\t\tgnorm\n\n");
 
   if (grafting)
-    r = maxent_lbfgs_grafting(&ds, model, &params, l2_sigma_sq, grafting);
+    r = maxent_lbfgs_grafting(&ds, model, &params, l2_sigma_sq, false,
+        grafting);
   else if (grafting_light)
-    r = maxent_lbfgs_grafting_light(&ds, model, &params, l2_sigma_sq,
+    r = maxent_lbfgs_grafting(&ds, model, &params, l2_sigma_sq, true,
         grafting_light);
   else
     r = maxent_lbfgs_optimize(&ds, model, &params, l2_sigma_sq);

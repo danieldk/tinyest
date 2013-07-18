@@ -26,6 +26,9 @@
  * feature selection, where features are selected based on their gradients.
  * Feature selection stops when no feature has a gradient higher than the l1
  * norm coefficient. The final model will be optimized.
+ * <p/>
+ * If <tt>light</tt> is set, the grafting-light selection is used, which
+ * performs only one iteration of gradient-descent.
  *
  * @param dataset the dataset
  * @param model initial model
@@ -35,23 +38,8 @@
  *        selection step
  */
 int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
-    lbfgs_parameter_t *params, double l2_sigma_sq, int grafting_n);
-
-/*!
- * Apply 'grafting-light' feature selection. Grafting-light feature selection,
- * with one iteration of gradient-descent. Features are selected based on their
- * gradients. Feature selection stops when no feature has a gradient higher
- * than the l1 norm coefficient. The final model will be optimized.
- *
- * @param dataset the dataset
- * @param model initial model
- * @param param LBFGS parameters
- * @param l2_sigma_sq squared sigma of the l2 prior
- * @param grafting_n number of features to select during each feature
- *        selection step
- */
-int maxent_lbfgs_grafting_light(dataset_t *dataset, model_t *model,
-    lbfgs_parameter_t *params, double l2_sigma_sq, int grafting_n);
+    lbfgs_parameter_t *params, double l2_sigma_sq, bool light,
+    int grafting_n);
 
 /*!
  * Maximum entropy model parameter estimation.

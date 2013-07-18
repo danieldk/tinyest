@@ -238,44 +238,9 @@ int maxent_select_features(dataset_t *dataset, lbfgs_parameter_t *params,
     return cur_select;
 }
 
-int maxent_lbfgs_grafting_light(dataset_t *dataset, model_t *model,
-    lbfgs_parameter_t *params, double l2_sigma_sq, int grafting_n)
-{
-  params->max_iterations = 1;
-
-  lbfgsfloatval_t *g;
-  if ((g = lbfgs_malloc(dataset->n_features)) == NULL) {
-    perror("malloc() error in maxent_lbfgs_grafting_light()");
-    exit(1);
-  }
-
-  maxent_lbfgs_data_t lbfgs_data = {l2_sigma_sq, dataset, model};
-
-  int r = LBFGS_SUCCESS;
-  while (1) {
-    fprintf(stderr, "--- Feature selection ---\n");
-
-    // Calculate feature gradients.
-    maxent_feature_gradients(dataset, model->params, g); 
-
-    // Select most promising features.
-    (void) maxent_select_features(dataset, params, model, g,
-        grafting_n);
-
-    fprintf(stderr, "--- Optimizing model ---\n");
-    r = lbfgs(dataset->n_features, model->params, 0, maxent_lbfgs_evaluate,
-      maxent_lbfgs_progress_verbose, &lbfgs_data, params);
-    if (r != LBFGSERR_MAXIMUMITERATION)
-      break;
-  }
-
-  lbfgs_free(g);
-
-  return r;
-}
-
 int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
-    lbfgs_parameter_t *params, double l2_sigma_sq, int grafting_n)
+    lbfgs_parameter_t *params, double l2_sigma_sq, bool light,
+    int grafting_n)
 {
   lbfgsfloatval_t *g;
   if ((g = lbfgs_malloc(dataset->n_features)) == NULL) {
@@ -283,6 +248,11 @@ int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
     exit(1);
   }
 
+  lbfgs_parameter_t grafting_params = *params;
+
+  if (light)
+    grafting_params.max_iterations = 1;
+
   maxent_lbfgs_data_t lbfgs_data = {l2_sigma_sq, dataset, model};
 
   int r = LBFGS_SUCCESS;
@@ -293,8 +263,8 @@ int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
     maxent_feature_gradients(dataset, model->params, g); 
 
     // Select most promising features.
-    int n_selected = maxent_select_features(dataset, params, model, g,
-        grafting_n);
+    int n_selected = maxent_select_features(dataset, &grafting_params, model,
+        g, grafting_n);
 
     // No features...
     if (n_selected == 0) {
@@ -304,8 +274,9 @@ int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
 
     fprintf(stderr, "--- Optimizing model ---\n");
     int r = lbfgs(dataset->n_features, model->params, 0, maxent_lbfgs_evaluate,
-      maxent_lbfgs_progress_verbose, &lbfgs_data, params);
-    if (r != LBFGS_STOP && r != LBFGS_SUCCESS && r != LBFGS_ALREADY_MINIMIZED)
+      maxent_lbfgs_progress_verbose, &lbfgs_data, &grafting_params);
+    if (r != LBFGS_STOP && r != LBFGS_SUCCESS && r != LBFGS_ALREADY_MINIMIZED &&
+        (r != LBFGSERR_MAXIMUMITERATION || !light))
       break;
   }
 
