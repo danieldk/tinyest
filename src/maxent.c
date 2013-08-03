@@ -25,6 +25,13 @@
 #include <tinyest/maxent.h>
 #include <tinyest/model.h>
 
+size_t min(size_t a, size_t b)
+{
+  if (a < b)
+    return a;
+  return b;
+}
+
 typedef struct {
   double l2_sigma_sq;
   dataset_t *dataset;
@@ -240,7 +247,7 @@ int maxent_select_features(dataset_t *dataset, lbfgs_parameter_t *params,
 
 int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
     lbfgs_parameter_t *params, double l2_sigma_sq, bool light,
-    int grafting_n)
+    int grafting_n, size_t limit)
 {
   lbfgsfloatval_t *g;
   if ((g = lbfgs_malloc(dataset->n_features)) == NULL) {
@@ -255,8 +262,9 @@ int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
 
   maxent_lbfgs_data_t lbfgs_data = {l2_sigma_sq, dataset, model};
 
+  size_t total_selected = 0;
   int r = LBFGS_SUCCESS;
-  while (1) {
+  while (limit == 0 || total_selected != limit) {
     fprintf(stderr, "--- Feature selection ---\n");
 
     // Calculate feature gradients.
@@ -264,7 +272,9 @@ int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
 
     // Select most promising features.
     int n_selected = maxent_select_features(dataset, &grafting_params, model,
-        g, grafting_n);
+        g, min(grafting_n, limit - total_selected));
+
+    total_selected += n_selected; 
 
     // No features...
     if (n_selected == 0) {

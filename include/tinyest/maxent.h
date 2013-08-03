@@ -36,10 +36,11 @@
  * @param l2_sigma_sq squared sigma of the l2 prior
  * @param grafting_n number of features to select during each feature
  *        selection step
+ * @param limit the maximal number of features to select
  */
 int maxent_lbfgs_grafting(dataset_t *dataset, model_t *model,
     lbfgs_parameter_t *params, double l2_sigma_sq, bool light,
-    int grafting_n);
+    int grafting_n, size_t limit);
 
 /*!
  * Maximum entropy model parameter estimation.

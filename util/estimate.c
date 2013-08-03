@@ -29,8 +29,8 @@
 #include <tinyest/model.h>
 
 enum OPTIONS { OPTION_FTOL = 1, OPTION_GTOL, OPTION_GRAFTING,
-  OPTION_GRAFTING_LIGHT, OPTION_L1, OPTION_L2, OPTION_LINESEARCH,
-  OPTION_MINSTEP, OPTION_MAXSTEP, OPTION_WEIGHTS };
+  OPTION_GRAFTING_LIGHT, OPTION_L1, OPTION_L2, OPTION_LIMIT,
+  OPTION_LINESEARCH, OPTION_MINSTEP, OPTION_MAXSTEP, OPTION_WEIGHTS };
 
 
 // Options
@@ -41,6 +41,7 @@ static struct option longopts[] = {
   { "grafting-light", required_argument, NULL, OPTION_GRAFTING_LIGHT},
   { "l1", required_argument, NULL, OPTION_L1},
   { "l2", required_argument, NULL, OPTION_L2},
+  { "limit", required_argument, NULL, OPTION_LIMIT},
   { "linesearch", required_argument, NULL, OPTION_LINESEARCH},
   { "minstep", required_argument, NULL, OPTION_MINSTEP},
   { "maxstep", required_argument, NULL, OPTION_MAXSTEP},
@@ -108,6 +109,7 @@ void usage(char *program_name)
   fprintf(stderr, "--grafting-light n\tEnable grafting-light (feature selection)\n");
   fprintf(stderr, "--l1 val\t\tl1 norm coefficient\n");
   fprintf(stderr, "--l2 val\t\tGaussian (l2) prior\n");
+  fprintf(stderr, "--limit n\tLimit use grafting to select n features\n");
   fprintf(stderr, "--linesearch alg\tLine search algorithm: armijo, ");
   fprintf(stderr, "backtracking, wolfe, or\n\t\t\tstrong_wolfe\n");
   fprintf(stderr, "--minstep val\t\tMinimum step of the line search routine (default: 1e-20)\n");
@@ -158,6 +160,7 @@ int main(int argc, char *argv[]) {
   double l2_sigma_sq = 0.0;
   int grafting = 0;
   int grafting_light = 0;
+  size_t grafting_limit = 0;
   char *weights_file = NULL;
 
   lbfgs_parameter_t params;
@@ -185,6 +188,9 @@ int main(int argc, char *argv[]) {
       break;
     case OPTION_L2:
       l2_sigma_sq = str_to_double(optarg);
+      break;
+    case OPTION_LIMIT:
+      grafting_limit = str_to_int(optarg);
       break;
     case OPTION_LINESEARCH:
       if (strcmp(optarg, "armijo") == 0)
@@ -293,10 +299,10 @@ int main(int argc, char *argv[]) {
 
   if (grafting)
     r = maxent_lbfgs_grafting(&ds, model, &params, l2_sigma_sq, false,
-        grafting);
+        grafting, grafting_limit);
   else if (grafting_light)
     r = maxent_lbfgs_grafting(&ds, model, &params, l2_sigma_sq, true,
-        grafting_light);
+        grafting_light, grafting_limit);
 
   // We require a full gradient decent during normal training and in
   // grafting-light, to get good end-weights.
