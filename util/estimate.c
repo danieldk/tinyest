@@ -111,7 +111,8 @@ void usage(char *program_name)
   fprintf(stderr, "--linesearch alg\tLine search algorithm: armijo, ");
   fprintf(stderr, "backtracking, wolfe, or\n\t\t\tstrong_wolfe\n");
   fprintf(stderr, "--minstep val\t\tMinimum step of the line search routine (default: 1e-20)\n");
-  fprintf(stderr, "--maxstep val\t\tMaximum step of the line search routine (default: 1e20)\n\n");
+  fprintf(stderr, "--maxstep val\t\tMaximum step of the line search routine (default: 1e20)\n");
+  fprintf(stderr, "--weights file\t\tLoad an initial weight vector\n\n");
 }
 
 double str_to_double(char *str)
