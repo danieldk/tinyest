@@ -5,9 +5,9 @@ Daniël de Kok &lt;<me@danieldk.eu>&gt;
 ## Introduction
 
 TinyEst (pronounced *tiniest*) is a maximum entropy model parameter
-optimizer. It uses the liblbfgs library to minimize the negative
-log-likelihood of the model. The program emphasizes simplicity and clarity
-of data structures.
+optimizer for ranking tasks (e.g. parse ranking). It uses the liblbfgs
+library to minimize the negative log-likelihood of the model. The
+program emphasizes simplicity and clarity of data structures.
 
 TinyEst has the following features:
 
