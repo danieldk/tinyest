@@ -29,6 +29,14 @@ Afterwards you will find the 'tinyest' library and 'estimate' utility.
 
 **Note:** Unfortunately, Visual Studio does not support C99.
 
+## Input format
+
+tinyest expect input in [TADM](http://tadm.sourceforge.net/) format. A
+description on the TADM format can be found on the TADM page. tinyest
+does not support a header. Moreover, the frequency of an event can be
+a floating point number (e.g. to indicate the probability of an event
+rather than a frequency).
+
 ## License
 
     Copyright 2010-2013 Daniël de Kok
